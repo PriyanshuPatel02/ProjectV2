@@ -1,0 +1,132 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <!-- Hero -->
+    <div style="padding:2.5rem 0 2rem;animation:fadeUp .5s ease">
+      <h1 style="font-size:2.5rem;margin-bottom:.5rem">Discover Amazing Products <span style="color:var(--accent)">✨</span></h1>
+      <p style="color:var(--muted)">Browse our curated collection of top-quality items</p>
+    </div>
+    <!-- Filters -->
+    <div class="flex gap-2 wrap mb-2" style="animation:fadeUp .5s .1s ease both">
+      <div class="search-box" style="flex:1;min-width:200px">
+        <input class="form-control" id="search" placeholder="Search products…">
+      </div>
+      <select class="form-control" id="cat-filter" style="width:auto;min-width:160px">
+        <option value="">All Categories</option>
+        <option>Electronics</option><option>Fashion</option>
+        <option>Stationary</option><option>Others</option>
+      </select>
+    </div>
+    <!-- Products Grid -->
+    <div class="grid-4" id="products-grid" style="animation:fadeUp .5s .2s ease both"></div>
+    <div id="empty-products" class="empty-state hidden">
+      <span class="icon">🔍</span>
+      <h3>No products found</h3>
+      <p>Try a different search or category filter</p>
+    </div>
+  </div>
+</div>
+<footer id="main-footer"></footer>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error('Not authenticated');
+renderCustomerNav('home');
+
+let allProducts = Store.getActiveProducts();
+let filtered    = [...allProducts];
+
+Store.syncCartWithInventory();
+
+function renderGrid() {
+  const grid  = document.getElementById('products-grid');
+  const empty = document.getElementById('empty-products');
+  grid.innerHTML = '';
+  if (!filtered.length) { empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  const cart = Store.getCart();
+
+  filtered.forEach((p, i) => {
+    // How many are already in cart
+    const cartItem = cart.find(c => c.productId === p.productId);
+    const inCart   = cartItem ? cartItem.quantity : 0;
+    const remaining= p.quantityAvailable - inCart;
+
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.style.animationDelay = (i * 0.05) + 's';
+    card.style.animation = 'fadeUp .4s ease both';
+
+    let actionBtn;
+    if (p.quantityAvailable === 0) {
+      actionBtn = `<button class="btn btn-outline btn-sm btn-full mt-1" disabled>Out of Stock</button>`;
+    } else if (remaining <= 0) {
+      actionBtn = `<button class="btn btn-outline btn-sm btn-full mt-1" disabled>Max in Cart (${p.quantityAvailable})</button>`;
+    } else {
+      actionBtn = `<button class="btn btn-primary btn-sm btn-full mt-1" onclick="addToCart('${p.productId}')">+ Add to Cart</button>`;
+    }
+
+    card.innerHTML = `
+      <div class="product-img">${p.productImage || '📦'}</div>
+      <div class="product-info">
+        <p class="product-category">${p.productCategory}</p>
+        <p class="product-name">${p.productName}</p>
+        <p class="product-price">${rupee(p.productPrice)}</p>
+        <p class="text-muted mt-1" style="font-size:.75rem">
+          ${p.quantityAvailable > 0
+            ? `In Stock: ${p.quantityAvailable}`
+            : `<span style="color:var(--danger);font-weight:600">Out of Stock</span>`}
+        </p>
+        ${actionBtn}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function applyFilters() {
+  const q   = document.getElementById('search').value.toLowerCase();
+  const cat = document.getElementById('cat-filter').value;
+  filtered  = allProducts.filter(p =>
+    (!q || p.productName.toLowerCase().includes(q) || p.productDescription.toLowerCase().includes(q)) &&
+    (!cat || p.productCategory === cat)
+  );
+  renderGrid();
+}
+
+function addToCart(productId) {
+  const product = Store.getProductById(productId);
+  if (!product) return;
+
+  const result = Store.addToCart(product);
+  if (!result.ok) {
+    toast(`❌ ${result.reason || 'Out of stock'}`, 'error');
+    renderGrid();
+    return;
+  }
+
+  toast(`"${product.productName}" added to cart 🛒`, 'success');
+  renderGrid(); // re-render so button disables when stock exhausted
+  renderCustomerNav('home');
+}
+
+document.getElementById('search').addEventListener('input', applyFilters);
+document.getElementById('cat-filter').addEventListener('change', applyFilters);
+renderGrid();
+renderSiteFooter();
+</script>
+</body>
+</html>

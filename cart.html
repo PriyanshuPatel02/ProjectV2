@@ -1,0 +1,240 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Cart — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <div class="section-head"><h2>🛒 My Cart</h2></div>
+    <div id="cart-content"></div>
+  </div>
+</div>
+<footer id="main-footer"></footer>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error();
+renderCustomerNav('cart');
+
+function renderCart() {
+  const cart = Store.getCart();
+  const cont = document.getElementById('cart-content');
+
+  if (!cart.length) {
+    cont.innerHTML = `<div class="empty-state"><span class="icon">🛒</span><h3>Your cart is empty</h3><p>Go back to <a href="home.html">Home</a> and add some products!</p></div>`;
+    return;
+  }
+
+  const total = cart.reduce((s, i) => s + (i.productPrice * i.quantity), 0);
+
+  cont.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start">
+      <div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table>
+            <thead><tr>
+              <th>Product</th><th>Price</th><th>Qty</th><th>Subtotal</th><th>Action</th>
+            </tr></thead>
+            <tbody id="cart-rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3 class="card-title" style="margin-bottom:1rem">Order Summary</h3>
+          <div class="flex justify-between mb-1"><span class="text-muted">Items (${cart.length})</span><span>${rupee(total)}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Delivery</span><span class="text-success">FREE</span></div>
+          <hr class="divider">
+          <div class="flex justify-between fw-600" style="font-size:1.1rem"><span>Total</span><span style="color:var(--accent)">${rupee(total)}</span></div>
+          <button class="btn btn-primary btn-full btn-lg mt-2" onclick="proceedToCheckout()">Proceed to Payment →</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const tbody = document.getElementById('cart-rows');
+  cart.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="flex gap-1"><span style="font-size:1.8rem">${item.productImage||'📦'}</span><div><p class="fw-600">${item.productName}</p><p class="text-muted" style="font-size:.75rem">${item.productCategory}</p><p class="text-muted" style="font-size:.75rem">ID: ${item.productId}</p></div></div></td>
+      <td>${rupee(item.productPrice)}</td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn btn-outline btn-icon btn-sm" onclick="changeQty('${item.productId}',-1)">−</button>
+          <span style="min-width:24px;text-align:center">${item.quantity}</span>
+          <button class="btn btn-outline btn-icon btn-sm" onclick="changeQty('${item.productId}',1)">+</button>
+        </div>
+      </td>
+      <td>${rupee(item.productPrice * item.quantity)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removeItem('${item.productId}')">🗑️</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function changeQty(productId, delta) {
+  const cart = Store.getCart();
+  const item = cart.find(i => i.productId === productId);
+  if (!item) return;
+  const newQty = item.quantity + delta;
+  if (newQty <= 0) { Store.removeFromCart(productId); }
+  else { Store.updateCartQty(productId, newQty); }
+  renderCart(); renderCustomerNav('cart');
+}
+
+function removeItem(productId) {
+  Store.removeFromCart(productId);
+  toast('Item removed from cart', 'info');
+  renderCart(); renderCustomerNav('cart');
+}
+
+function proceedToCheckout() {
+  const cart = Store.getCart();
+  if (!cart.length) return toast('Cart is empty', 'error');
+  window.location.href = 'pay-bill.html';
+}
+
+renderCart();
+renderSiteFooter();
+</script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Cart — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <div class="section-head"><h2>🛒 My Cart</h2></div>
+    <div id="cart-content"></div>
+  </div>
+</div>
+<footer id="main-footer"></footer>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error();
+renderCustomerNav('cart');
+
+function renderCart() {
+  const sync = Store.syncCartWithInventory();
+  if (sync.changed) {
+    if (sync.removed) toast(`${sync.removed} item(s) removed from cart due to stock update.`, 'info');
+    if (sync.adjusted) toast(`${sync.adjusted} item(s) quantity adjusted to available stock.`, 'info');
+  }
+
+  const cart = Store.getCart();
+  const cont = document.getElementById('cart-content');
+
+  if (!cart.length) {
+    cont.innerHTML = `<div class="empty-state"><span class="icon">🛒</span><h3>Your cart is empty</h3><p>Go back to <a href="home.html">Home</a> and add some products!</p></div>`;
+    return;
+  }
+
+  const total = cart.reduce((s, i) => s + (i.productPrice * i.quantity), 0);
+
+  cont.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start">
+      <div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table>
+            <thead><tr>
+              <th>Product</th><th>Price</th><th>Qty</th><th>Subtotal</th><th>Action</th>
+            </tr></thead>
+            <tbody id="cart-rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3 class="card-title" style="margin-bottom:1rem">Order Summary</h3>
+          <div class="flex justify-between mb-1"><span class="text-muted">Items (${cart.length})</span><span>${rupee(total)}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Delivery</span><span class="text-success">FREE</span></div>
+          <hr class="divider">
+          <div class="flex justify-between fw-600" style="font-size:1.1rem"><span>Total</span><span style="color:var(--accent)">${rupee(total)}</span></div>
+          <button class="btn btn-primary btn-full btn-lg mt-2" onclick="proceedToCheckout()">Proceed to Payment →</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const tbody = document.getElementById('cart-rows');
+  cart.forEach(item => {
+    const product = Store.getProductById(item.productId);
+    const maxQty = Math.max(0, Number(product?.quantityAvailable) || 0);
+    const disableInc = item.quantity >= maxQty;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="flex gap-1"><span style="font-size:1.8rem">${item.productImage||'📦'}</span><div><p class="fw-600">${item.productName}</p><p class="text-muted" style="font-size:.75rem">${item.productCategory}</p><p class="text-muted" style="font-size:.75rem">ID: ${item.productId}</p></div></div></td>
+      <td>${rupee(item.productPrice)}</td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn btn-outline btn-icon btn-sm" onclick="changeQty('${item.productId}',-1)">−</button>
+          <span style="min-width:24px;text-align:center">${item.quantity}</span>
+          <button class="btn btn-outline btn-icon btn-sm" onclick="changeQty('${item.productId}',1)" ${disableInc ? 'disabled' : ''}>+</button>
+        </div>
+        <p class="text-muted" style="font-size:.72rem;margin-top:.3rem">Stock: ${maxQty}</p>
+      </td>
+      <td>${rupee(item.productPrice * item.quantity)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removeItem('${item.productId}')">🗑️</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function changeQty(productId, delta) {
+  const cart = Store.getCart();
+  const item = cart.find(i => i.productId === productId);
+  if (!item) return;
+  const newQty = item.quantity + delta;
+  if (newQty <= 0) {
+    Store.removeFromCart(productId);
+  } else {
+    const result = Store.updateCartQty(productId, newQty);
+    if (!result.ok) {
+      if (result.removed) toast('Item is out of stock and was removed from cart.', 'error');
+      else if (result.adjusted) toast(`Out of stock. Max available quantity is ${result.max}.`, 'error');
+      else toast(result.reason || 'Unable to update cart quantity.', 'error');
+    }
+  }
+  renderCart(); renderCustomerNav('cart');
+}
+
+function removeItem(productId) {
+  Store.removeFromCart(productId);
+  toast('Item removed from cart', 'info');
+  renderCart(); renderCustomerNav('cart');
+}
+
+function proceedToCheckout() {
+  const sync = Store.syncCartWithInventory();
+  if (sync.changed) {
+    renderCart();
+    renderCustomerNav('cart');
+    return toast('Cart updated as per latest stock. Please review and continue.', 'info');
+  }
+
+  const cart = Store.getCart();
+  if (!cart.length) return toast('Cart is empty', 'error');
+  window.location.href = 'pay-bill.html';
+}
+
+renderCart();
+renderSiteFooter();
+</script>
+</body>
+</html>

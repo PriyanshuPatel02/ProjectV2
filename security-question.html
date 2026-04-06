@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Security Question — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+  .q-option {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: .85rem 1rem;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    font-family: var(--font-body);
+    font-size: .9rem;
+    color: var(--text);
+    text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+  .q-option:hover   { border-color: var(--accent); background: rgba(240,165,0,.05); }
+  .q-option.selected {
+    border-color: var(--accent);
+    background: rgba(240,165,0,.1);
+  }
+  .q-option .q-radio {
+    width: 18px; height: 18px; min-width: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+  }
+  .q-option.selected .q-radio {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+  .q-option.selected .q-radio::after {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #000;
+  }
+</style>
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <div class="section-head">
+      <h2>🔐 Security Question</h2>
+      <p style="color:var(--muted)">Set up a security question to enable password recovery</p>
+    </div>
+
+    <div style="max-width:560px">
+
+      <!-- Status banner if already set -->
+      <div id="current-status" class="alert alert-info mb-2 hidden"></div>
+      <div id="save-alert"></div>
+
+      <div class="card">
+        <h3 class="card-title mb-2" style="font-size:1rem">Choose a security question</h3>
+
+        <div class="flex-col" style="gap:.5rem;margin-bottom:1.5rem" id="question-list"></div>
+
+        <div class="form-group mt-2">
+          <label>Your Answer <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(case insensitive — remember this exactly)</span></label>
+          <input class="form-control" id="sq-answer" placeholder="Type your answer here" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label>Confirm Answer</label>
+          <input class="form-control" id="sq-answer-confirm" placeholder="Repeat your answer" autocomplete="off">
+        </div>
+
+        <div class="flex gap-1 mt-2">
+          <button class="btn btn-primary" onclick="saveSecurityQuestion()">Save Security Question</button>
+          <a href="profile.html" class="btn btn-outline">← Back to Profile</a>
+        </div>
+      </div>
+
+      <div class="card mt-2" style="padding:1rem 1.25rem">
+        <p class="text-muted" style="font-size:.8rem;line-height:1.7">
+          <strong style="color:var(--accent)">Why is this important?</strong><br>
+          Your security question is used to verify your identity when you forget your password.
+          Choose a question with an answer only you know and will always remember.
+          The answer comparison is case-insensitive so "Mumbai" and "mumbai" both work.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+<footer id="main-footer"></footer>
+
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error();
+renderCustomerNav('');
+
+const QUESTIONS = [
+  "What was the name of your first pet?",
+  "What is your mother's maiden name?",
+  "What was the name of your primary school?",
+  "What city were you born in?",
+  "What is your favourite movie?",
+  "What street did you grow up on?",
+  "What was the make of your first car?",
+];
+
+let selectedQuestion = null;
+
+// Render question list
+const list = document.getElementById('question-list');
+QUESTIONS.forEach((q, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'q-option';
+  btn.innerHTML = `<span class="q-radio"></span><span>${q}</span>`;
+  btn.onclick = () => selectQuestion(i, q, btn);
+  list.appendChild(btn);
+});
+
+// Show current status
+const customer = Store.getCustomerById(sess.customerId);
+if (customer.securityQuestion) {
+  const statusEl = document.getElementById('current-status');
+  statusEl.innerHTML = `ℹ️ You already have a security question set: <strong>"${customer.securityQuestion}"</strong>. You can update it below.`;
+  statusEl.classList.remove('hidden');
+
+  // Pre-select the current question
+  const idx = QUESTIONS.indexOf(customer.securityQuestion);
+  if (idx > -1) {
+    const buttons = list.querySelectorAll('.q-option');
+    selectQuestion(idx, customer.securityQuestion, buttons[idx]);
+  }
+}
+
+function selectQuestion(idx, q, btn) {
+  selectedQuestion = q;
+  list.querySelectorAll('.q-option').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function saveSecurityQuestion() {
+  const alertEl = document.getElementById('save-alert');
+  alertEl.innerHTML = '';
+
+  if (!selectedQuestion) {
+    alertEl.innerHTML = '<div class="alert alert-danger">⚠️ Please select a security question.</div>';
+    return;
+  }
+
+  const answer  = document.getElementById('sq-answer').value.trim();
+  const confirm = document.getElementById('sq-answer-confirm').value.trim();
+
+  if (!answer) {
+    alertEl.innerHTML = '<div class="alert alert-danger">⚠️ Please enter your answer.</div>';
+    return;
+  }
+  if (answer.length < 2) {
+    alertEl.innerHTML = '<div class="alert alert-danger">⚠️ Answer must be at least 2 characters.</div>';
+    return;
+  }
+  if (answer.toLowerCase() !== confirm.toLowerCase()) {
+    alertEl.innerHTML = '<div class="alert alert-danger">⚠️ Answers do not match.</div>';
+    return;
+  }
+
+  Store.updateCustomer(sess.customerId, {
+    securityQuestion: selectedQuestion,
+    securityAnswer:   btoa(answer.toLowerCase().trim()),
+  });
+
+  alertEl.innerHTML = '<div class="alert alert-success">✅ Security question saved successfully! Your password reset is now enabled.</div>';
+  toast('Security question saved!', 'success');
+
+  // Update status banner
+  const statusEl = document.getElementById('current-status');
+  statusEl.innerHTML = `ℹ️ Security question is now set: <strong>"${selectedQuestion}"</strong>`;
+  statusEl.classList.remove('hidden');
+
+  document.getElementById('sq-answer').value = '';
+  document.getElementById('sq-answer-confirm').value = '';
+}
+
+renderSiteFooter();
+</script>
+</body>
+</html>

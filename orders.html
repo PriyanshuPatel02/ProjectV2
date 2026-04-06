@@ -1,0 +1,371 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Orders — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <div class="section-head"><h2>📦 My Orders</h2><p style="color:var(--muted)">View and manage your orders</p></div>
+    <div id="orders-list"></div>
+  </div>
+</div>
+<footer id="main-footer"></footer>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error();
+renderCustomerNav('orders');
+
+function render() {
+  const orders = Store.getOrdersByCustomer(sess.customerId).reverse();
+  const cont = document.getElementById('orders-list');
+
+  if (!orders.length) {
+    cont.innerHTML = `<div class="empty-state"><span class="icon">📦</span><h3>No orders yet</h3><p>Start shopping on <a href="home.html">Home</a></p></div>`;
+    return;
+  }
+
+  cont.innerHTML = orders.map(o => `
+    <div class="card mb-2">
+      <div class="flex justify-between wrap gap-1 mb-2">
+        <div>
+          <span class="text-muted" style="font-size:.75rem">ORDER ID</span>
+          <p class="fw-600" style="font-size:1.05rem">#${o.orderId}</p>
+        </div>
+        <div>${statusBadge(o.orderStatus)}</div>
+      </div>
+      <div class="grid-3 mb-2" style="gap:.75rem">
+        <div><p class="text-muted" style="font-size:.75rem">ORDER DATE</p><p style="font-size:.875rem">${fmtDate(o.orderDate)}</p></div>
+        <div><p class="text-muted" style="font-size:.75rem">TOTAL</p><p style="font-size:.875rem;color:var(--accent);font-weight:600">${rupee(o.totalPrice)}</p></div>
+        <div><p class="text-muted" style="font-size:.75rem">PAYMENT</p><p style="font-size:.875rem">${o.paymentMethod||'—'}</p></div>
+      </div>
+      <details>
+        <summary style="cursor:pointer;color:var(--accent);font-size:.875rem;margin-bottom:.75rem">View Products (${o.products.length})</summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Qty</th></tr></thead>
+            <tbody>
+              ${o.products.map(p=>`<tr><td>${p.productId}</td><td>${p.productName}</td><td>${p.productCategory}</td><td>${rupee(p.productPrice)}</td><td>${p.productQuantity}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <div class="flex gap-1 wrap mt-1">
+        ${o.orderStatus === 'Confirmed'
+          ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.orderId})">Cancel Order</button>`
+          : ''}
+        ${o.orderStatus === 'Delivered'
+          ? `<button class="btn btn-info btn-sm" onclick="giveFeedback(${o.orderId})">Give Feedback</button>`
+          : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function cancelOrder(orderId) {
+  const ok = await confirm(`Are you sure you want to cancel your order for <strong>#${orderId}</strong>?`);
+  if (!ok) return;
+
+  const order = Store.getOrderById(orderId);
+  if (!order || order.orderStatus !== 'Confirmed') return toast('Only Confirmed orders can be cancelled.', 'error');
+
+  const reasonModal = await new Promise(resolve => {
+    openModal(`
+      <div class="modal-header"><h3 class="modal-title">Cancellation Reason</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="form-group">
+        <label>Reason for cancellation</label>
+        <textarea class="form-control" id="cancel-reason" rows="3" placeholder="Please enter your reason…"></textarea>
+      </div>
+      <div class="flex gap-1 mt-2">
+        <button class="btn btn-danger" id="confirm-cancel">Confirm Cancellation</button>
+        <button class="btn btn-outline" onclick="closeModal()">Keep Order</button>
+      </div>
+    `);
+    setTimeout(() => {
+      document.getElementById('confirm-cancel')?.addEventListener('click', () => {
+        const r = document.getElementById('cancel-reason').value.trim();
+        closeModal(); resolve(r || 'No reason provided');
+      });
+    }, 50);
+  });
+
+  Store.updateOrderStatus(orderId, 'Cancelled');
+  openModal(`
+    <div class="modal-header"><h3 class="modal-title">Order Cancelled ✅</h3><button class="modal-close" onclick="closeModal();render()">×</button></div>
+    <p>Your order <strong>#${orderId}</strong> has been cancelled successfully.</p>
+    <p class="mt-1" style="color:var(--accent)">The amount will be refunded to your account in 5 working days.</p>
+    <button class="btn btn-primary mt-2" onclick="closeModal();render()">OK</button>
+  `);
+}
+
+function giveFeedback(orderId) {
+  openModal(`
+    <div class="modal-header"><h3 class="modal-title">Add Feedback</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="form-group"><label>Feedback Description</label><textarea class="form-control" id="fb-desc" rows="3" placeholder="Share your experience…"></textarea></div>
+    <div class="form-group"><label>Rating (1–5)</label>
+      <select class="form-control" id="fb-rating">
+        <option>5 ⭐⭐⭐⭐⭐</option><option>4 ⭐⭐⭐⭐</option>
+        <option>3 ⭐⭐⭐</option><option>2 ⭐⭐</option><option>1 ⭐</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full" id="submit-fb">Submit Feedback</button>
+  `);
+  setTimeout(() => {
+    document.getElementById('submit-fb')?.addEventListener('click', () => {
+      const desc   = document.getElementById('fb-desc').value.trim();
+      const rating = document.getElementById('fb-rating').value;
+      if (!desc) return toast('Please enter feedback description.', 'error');
+      const order = Store.getOrderById(orderId);
+      Store.addFeedback({
+        orderId, customerId: sess.customerId, customerName: sess.name,
+        feedbackDescription: desc, rating: rating.charAt(0)
+      });
+      closeModal();
+      toast('Feedback submitted! Thank you 🙏', 'success');
+    });
+  }, 50);
+}
+
+render();
+renderSiteFooter();
+</script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Orders — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <div class="section-head"><h2>📦 My Orders</h2><p style="color:var(--muted)">View and manage your orders</p></div>
+    <div id="orders-list"></div>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error();
+renderCustomerNav('orders');
+
+// Cancellable only if Confirmed (not In Transit, Out for Delivery, Delivered, Cancelled)
+const CANCELLABLE_STATUSES = ['Confirmed'];
+
+function render() {
+  const orders = Store.getOrdersByCustomer(sess.customerId).reverse();
+  const cont   = document.getElementById('orders-list');
+  if (!orders.length) {
+    cont.innerHTML = `<div class="empty-state"><span class="icon">📦</span><h3>No orders yet</h3><p>Start shopping on <a href="home.html">Home</a></p></div>`;
+    return;
+  }
+
+  cont.innerHTML = orders.map(o => {
+    const feedbacks = Store.getFeedbacks().filter(f => f.orderId === o.orderId && f.customerId === sess.customerId);
+    const hasFeedback = feedbacks.length > 0;
+    const fb = hasFeedback ? feedbacks[feedbacks.length - 1] : null;
+
+    // Cancel button: only for Confirmed orders
+    const canCancel = CANCELLABLE_STATUSES.includes(o.orderStatus);
+    let cancelBtn = '';
+    if (o.orderStatus === 'Delivered' || o.orderStatus === 'Cancelled') {
+      cancelBtn = ''; // no cancel button at all
+    } else if (canCancel) {
+      cancelBtn = `<button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.orderId})">Cancel Order</button>`;
+    } else {
+      cancelBtn = `<span style="font-size:.78rem;color:var(--muted)">⚠️ Cannot cancel — order is already ${o.orderStatus}</span>`;
+    }
+
+    // Feedback section
+    let feedbackSection = '';
+    if (o.orderStatus === 'Delivered') {
+      if (hasFeedback) {
+        feedbackSection = `
+          <div style="margin-top:.75rem;padding:.75rem 1rem;background:rgba(240,165,0,.06);border-radius:10px;border:1px solid rgba(240,165,0,.2)">
+            <div class="flex justify-between" style="align-items:center">
+              <span style="font-size:.85rem;font-weight:600">Your Review ${'⭐'.repeat(+fb.rating||1)}</span>
+              <button class="btn btn-outline btn-sm" onclick="editFeedback(${o.orderId})">✏️ Edit Review</button>
+            </div>
+            <p style="font-size:.85rem;margin-top:.4rem;color:var(--muted)">"${fb.feedbackDescription}"</p>
+          </div>`;
+      } else {
+        feedbackSection = `<button class="btn btn-info btn-sm" onclick="giveFeedback(${o.orderId})">⭐ Give Feedback</button>`;
+      }
+    }
+
+    return `
+    <div class="card mb-2">
+      <div class="flex justify-between wrap gap-1 mb-2">
+        <div>
+          <span class="text-muted" style="font-size:.75rem">ORDER ID</span>
+          <p class="fw-600" style="font-size:1.05rem">#${o.orderId}</p>
+        </div>
+        <div>${statusBadge(o.orderStatus)}</div>
+      </div>
+      <div class="grid-3 mb-2" style="gap:.75rem">
+        <div><p class="text-muted" style="font-size:.75rem">ORDER DATE</p><p style="font-size:.875rem">${fmtDate(o.orderDate)}</p></div>
+        <div><p class="text-muted" style="font-size:.75rem">TOTAL</p><p style="font-size:.875rem;color:var(--accent);font-weight:600">${rupee(o.totalPrice)}</p></div>
+        <div><p class="text-muted" style="font-size:.75rem">PAYMENT</p><p style="font-size:.875rem">${o.paymentMethod||'—'}</p></div>
+      </div>
+      <details>
+        <summary style="cursor:pointer;color:var(--accent);font-size:.875rem;margin-bottom:.75rem">View Products (${o.products.length})</summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Qty</th></tr></thead>
+            <tbody>
+              ${o.products.map(p=>`<tr><td>${p.productId}</td><td>${p.productName}</td><td>${p.productCategory}</td><td>${rupee(p.productPrice)}</td><td>${p.productQuantity}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <div class="flex gap-1 wrap mt-1">${cancelBtn}</div>
+      ${feedbackSection}
+    </div>`;
+  }).join('');
+}
+
+/* ── Cancel Order ──────────────────────────────────── */
+async function cancelOrder(orderId) {
+  const order = Store.getOrderById(orderId);
+  if (!order) return;
+
+  // Block cancel for non-cancellable statuses
+  if (!CANCELLABLE_STATUSES.includes(order.orderStatus)) {
+    toast(`❌ Cannot cancel — order is ${order.orderStatus}.`, 'error');
+    return;
+  }
+
+  const ok = await confirm(`Are you sure you want to cancel order <strong>#${orderId}</strong>?`);
+  if (!ok) return;
+
+  const reasonModal = await new Promise(resolve => {
+    openModal(`
+      <div class="modal-header"><h3 class="modal-title">Cancellation Reason</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="form-group">
+        <label>Reason for cancellation</label>
+        <textarea class="form-control" id="cancel-reason" rows="3" placeholder="Please enter your reason…"></textarea>
+        <span id="err-cancel-reason" style="color:var(--danger);font-size:.78rem;margin-top:.25rem;display:block"></span>
+      </div>
+      <div class="flex gap-1 mt-2">
+        <button class="btn btn-danger" id="confirm-cancel">Confirm Cancellation</button>
+        <button class="btn btn-outline" onclick="closeModal()">Keep Order</button>
+      </div>
+    `);
+    setTimeout(() => {
+      document.getElementById('confirm-cancel')?.addEventListener('click', () => {
+        const r = document.getElementById('cancel-reason').value.trim();
+        if (!r) { document.getElementById('err-cancel-reason').textContent = '❌ Please enter a reason.'; return; }
+        closeModal(); resolve(r);
+      });
+    }, 50);
+  });
+
+  Store.updateOrderStatus(orderId, 'Cancelled');
+  openModal(`
+    <div class="modal-header"><h3 class="modal-title">Order Cancelled ✅</h3><button class="modal-close" onclick="closeModal();render()">×</button></div>
+    <p>Your order <strong>#${orderId}</strong> has been cancelled successfully.</p>
+    <p class="mt-1" style="color:var(--accent)">The amount will be refunded to your account in 5 working days.</p>
+    <button class="btn btn-primary mt-2" onclick="closeModal();render()">OK</button>
+  `);
+}
+
+/* ── Give Feedback (first time) ──────────────────────── */
+function giveFeedback(orderId) {
+  // Check if already submitted
+  const existing = Store.getFeedbacks().find(f => f.orderId === orderId && f.customerId === sess.customerId);
+  if (existing) { toast('You have already submitted feedback for this order.','info'); render(); return; }
+
+  openModal(`
+    <div class="modal-header"><h3 class="modal-title">⭐ Write a Review</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="form-group">
+      <label>Feedback Description *</label>
+      <textarea class="form-control" id="fb-desc" rows="3" placeholder="Share your experience…"></textarea>
+      <span id="err-fb-desc" style="color:var(--danger);font-size:.78rem;margin-top:.25rem;display:block"></span>
+    </div>
+    <div class="form-group">
+      <label>Rating *</label>
+      <select class="form-control" id="fb-rating">
+        <option>5 ⭐⭐⭐⭐⭐</option><option>4 ⭐⭐⭐⭐</option>
+        <option>3 ⭐⭐⭐</option><option>2 ⭐⭐</option><option>1 ⭐</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full" id="submit-fb">Submit Feedback</button>
+  `);
+  setTimeout(() => {
+    document.getElementById('submit-fb')?.addEventListener('click', () => {
+      const desc   = document.getElementById('fb-desc').value.trim();
+      const rating = document.getElementById('fb-rating').value;
+      if (!desc) { document.getElementById('err-fb-desc').textContent = '❌ Please enter your feedback.'; return; }
+      Store.addFeedback({
+        orderId, customerId: sess.customerId, customerName: sess.name,
+        feedbackDescription: desc, rating: rating.charAt(0)
+      });
+      closeModal();
+      toast('Feedback submitted! Thank you 🙏', 'success');
+      render();
+    });
+  }, 50);
+}
+
+/* ── Edit Feedback ───────────────────────────────────── */
+function editFeedback(orderId) {
+  const feedbacks = Store.getFeedbacks();
+  const fbIndex   = feedbacks.map((f, i) => ({ ...f, _i: i }))
+    .filter(f => f.orderId === orderId && f.customerId === sess.customerId)
+    .map(f => f._i)
+    .pop();
+  if (fbIndex === -1) { giveFeedback(orderId); return; }
+  const fb = feedbacks[fbIndex];
+
+  openModal(`
+    <div class="modal-header"><h3 class="modal-title">✏️ Edit Your Review</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="form-group">
+      <label>Feedback Description *</label>
+      <textarea class="form-control" id="fb-desc-edit" rows="3">${fb.feedbackDescription}</textarea>
+      <span id="err-fb-desc-edit" style="color:var(--danger);font-size:.78rem;margin-top:.25rem;display:block"></span>
+    </div>
+    <div class="form-group">
+      <label>Rating *</label>
+      <select class="form-control" id="fb-rating-edit">
+        <option ${fb.rating==='5'?'selected':''}>5 ⭐⭐⭐⭐⭐</option>
+        <option ${fb.rating==='4'?'selected':''}>4 ⭐⭐⭐⭐</option>
+        <option ${fb.rating==='3'?'selected':''}>3 ⭐⭐⭐</option>
+        <option ${fb.rating==='2'?'selected':''}>2 ⭐⭐</option>
+        <option ${fb.rating==='1'?'selected':''}>1 ⭐</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full" id="update-fb">Update Review</button>
+  `);
+  setTimeout(() => {
+    document.getElementById('update-fb')?.addEventListener('click', () => {
+      const desc   = document.getElementById('fb-desc-edit').value.trim();
+      const rating = document.getElementById('fb-rating-edit').value;
+      if (!desc) { document.getElementById('err-fb-desc-edit').textContent = '❌ Please enter your feedback.'; return; }
+      // Update in store
+      feedbacks[fbIndex].feedbackDescription = desc;
+      feedbacks[fbIndex].rating = rating.charAt(0);
+      feedbacks[fbIndex].updatedAt = new Date().toISOString();
+      Store.saveFeedbacks(feedbacks);
+      closeModal();
+      toast('Review updated! ✅', 'success');
+      render();
+    });
+  }, 50);
+}
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Home — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+.field-error { color:var(--danger);font-size:.78rem;margin-top:.25rem;min-height:1rem;display:block; }
+</style>
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="admin-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main-content" id="main-content">
+
+    <!-- Dashboard -->
+    <div id="section-home">
+      <div class="section-head"><h2>Dashboard Overview</h2></div>
+      <div class="grid-4 mb-2" id="stats-grid"></div>
+      <div class="grid-2 mt-2">
+        <div class="card">
+          <h3 class="card-title mb-2">Recent Orders</h3>
+          <div id="recent-orders"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title mb-2">Quick Actions</h3>
+          <div class="flex-col gap-1" style="gap:.5rem">
+            <button class="btn btn-outline w-full" onclick="showSection('add-products')">➕ Add New Product</button>
+            <button class="btn btn-outline w-full" onclick="showSection('view-products')">📦 View All Products</button>
+            <button class="btn btn-outline w-full" onclick="showSection('view-customers')">👥 View Customers</button>
+            <button class="btn btn-outline w-full" onclick="showSection('all-orders')">📋 View All Orders</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Product -->
+    <div id="section-add-products" class="hidden">
+      <div class="section-head"><h2>Add New Product</h2></div>
+      <div class="card" style="max-width:600px">
+        <div id="add-prod-alert"></div>
+        <div class="form-group">
+          <label>Product Name * <span style="font-weight:400;font-size:.75rem;color:var(--muted)">(alphabets only, max 50 chars)</span></label>
+          <input class="form-control" id="ap-name" maxlength="50" placeholder="e.g. Running Shoes" oninput="blockNonAlpha(this)">
+          <span class="field-error" id="fe-ap-name"></span>
+        </div>
+        <div class="form-group">
+          <label>Product Image <span style="font-weight:400;font-size:.75rem;color:var(--muted)">(emoji only)</span></label>
+          <input class="form-control" id="ap-img" placeholder="e.g. 👟" maxlength="4" value="📦" oninput="blockNonEmoji(this)">
+        </div>
+        <div class="form-group">
+          <label>Product Price * <span style="font-weight:400;font-size:.75rem;color:var(--muted)">(₹1 – ₹2,00,000)</span></label>
+          <input class="form-control" id="ap-price" type="text" inputmode="numeric" placeholder="e.g. 999" oninput="blockNonPosInt(this);liveCheckPrice('ap-price','fe-ap-price')">
+          <span class="field-error" id="fe-ap-price"></span>
+        </div>
+        <div class="form-group"><label>Product Category *</label>
+          <select class="form-control" id="ap-cat">
+            <option value="">Select category</option>
+            <option>Fashion</option><option>Electronics</option>
+            <option>Stationary</option><option>Others</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Product Description * (max 200 chars)</label>
+          <textarea class="form-control" id="ap-desc" maxlength="200" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Quantity Available * <span style="font-weight:400;font-size:.75rem;color:var(--muted)">(positive whole number, max 10,000)</span></label>
+          <input class="form-control" id="ap-qty" type="text" inputmode="numeric" placeholder="e.g. 50" oninput="blockNonPosInt(this);liveCheckQty('ap-qty','fe-ap-qty')">
+          <span class="field-error" id="fe-ap-qty"></span>
+        </div>
+        <div class="form-group"><label>Product Status *</label>
+          <select class="form-control" id="ap-status">
+            <option value="Active">Active</option>
+            <option value="In Active">In Active</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="addProduct()">Add Product</button>
+      </div>
+    </div>
+
+    <!-- View All Products -->
+    <div id="section-view-products" class="hidden">
+      <div class="section-head flex justify-between">
+        <div><h2>All Products</h2></div>
+        <button class="btn btn-primary btn-sm" onclick="showSection('add-products')">+ Add Product</button>
+      </div>
+      <div class="flex gap-1 wrap mb-2">
+        <div class="search-box" style="flex:1"><input class="form-control" id="vp-search" placeholder="Search by name, category…" oninput="renderProductsTable()"></div>
+        <button class="btn btn-outline btn-sm" onclick="renderProductsTable()">🔄 Refresh</button>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="products-table-body"></tbody>
+        </table></div>
+      </div>
+      <div id="vp-pagination" class="flex gap-1 mt-2 wrap"></div>
+      <div id="vp-download" class="mt-2"></div>
+    </div>
+
+    <!-- View Customers -->
+    <div id="section-view-customers" class="hidden">
+      <div class="section-head"><h2>All Customers</h2></div>
+      <div class="flex gap-1 wrap mb-2">
+        <div class="search-box" style="flex:1"><input class="form-control" id="vc-search" placeholder="Search by ID, name, email, city…" oninput="renderCustomersTable()"></div>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Customer ID</th><th>Name</th><th>Country</th><th>State</th><th>City</th><th>Phone</th><th>Address1</th><th>Address2</th><th>Email</th></tr></thead>
+          <tbody id="customers-table-body"></tbody>
+        </table></div>
+      </div>
+      <div id="vc-pagination" class="flex gap-1 mt-2 wrap"></div>
+      <div id="vc-download" class="mt-2"></div>
+    </div>
+
+    <!-- All Orders -->
+    <div id="section-all-orders" class="hidden">
+      <div class="section-head"><h2>All Orders</h2></div>
+      <div class="flex gap-1 wrap mb-2">
+        <button class="btn btn-outline btn-sm" id="filter-all"          onclick="filterOrders('')">All</button>
+        <button class="btn btn-outline btn-sm" id="filter-Confirmed"    onclick="filterOrders('Confirmed')">Confirmed</button>
+        <button class="btn btn-outline btn-sm" id="filter-Out for Delivery" onclick="filterOrders('Out for Delivery')">Out for Delivery</button>
+        <button class="btn btn-outline btn-sm" id="filter-In Transit"   onclick="filterOrders('In Transit')">In Transit</button>
+        <button class="btn btn-outline btn-sm" id="filter-Delivered"    onclick="filterOrders('Delivered')">Delivered</button>
+        <button class="btn btn-outline btn-sm" id="filter-Cancelled"    onclick="filterOrders('Cancelled')">Cancelled</button>
+      </div>
+      <div id="all-orders-list"></div>
+    </div>
+
+    <!-- Search Product -->
+    <div id="section-search-product" class="hidden">
+      <div class="section-head"><h2>Search Product</h2></div>
+      <div class="card" style="max-width:500px;margin-bottom:1.5rem">
+        <div class="form-group"><label>Product ID (3-digit)</label><input class="form-control" id="sp-id" placeholder="e.g. 101"></div>
+        <div id="sp-error" class="alert alert-danger hidden"></div>
+        <button class="btn btn-primary" onclick="searchProduct()">🔍 Search</button>
+      </div>
+      <div id="sp-result"></div>
+    </div>
+
+    <!-- Delete Product -->
+    <div id="section-delete-product" class="hidden">
+      <div class="section-head"><h2>Delete Product (Soft Delete)</h2></div>
+      <div class="card" style="max-width:500px;margin-bottom:1.5rem">
+        <div class="form-group"><label>Product ID</label><input class="form-control" id="dp-id" placeholder="e.g. 101"></div>
+        <div class="form-group"><label>Product Name</label><input class="form-control" id="dp-name" placeholder="e.g. Headphones"></div>
+        <div id="dp-error"   class="alert alert-danger hidden"></div>
+        <div id="dp-success" class="alert alert-success hidden"></div>
+        <button class="btn btn-danger" onclick="deleteProduct()">🗑️ Delete Product</button>
+      </div>
+      <div id="dp-result"></div>
+    </div>
+
+    <!-- Update Product -->
+    <div id="section-update-product" class="hidden">
+      <div class="section-head"><h2>Update Product</h2></div>
+      <div class="card" style="max-width:600px">
+        <div id="up-alert"></div>
+        <div class="form-group"><label>Product ID (read-only)</label><input class="form-control" id="up-id" readonly></div>
+        <div class="form-group">
+          <label>Product Name * <span style="font-weight:400;font-size:.75rem;color:var(--muted)">(alphabets only, max 50 chars)</span></label>
+          <input class="form-control" id="up-name" maxlength="50" oninput="blockNonAlpha(this)">
+          <span class="field-error" id="fe-up-name"></span>
+        </div>
+        <div class="form-group">
+          <label>Product Price * <span style="font-weight:400;font-size:.75rem;color:var(--muted)">(₹1 – ₹2,00,000)</span></label>
+          <input class="form-control" id="up-price" type="text" inputmode="numeric" oninput="blockNonPosInt(this);liveCheckPrice('up-price','fe-up-price')">
+          <span class="field-error" id="fe-up-price"></span>
+        </div>
+        <div class="form-group"><label>Product Category *</label>
+          <select class="form-control" id="up-cat">
+            <option>Fashion</option><option>Electronics</option>
+            <option>Stationary</option><option>Others</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Product Description * (max 200 chars)</label>
+          <textarea class="form-control" id="up-desc" maxlength="200" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Quantity Available * <span style="font-weight:400;font-size:.75rem;color:var(--muted)">(positive whole number, max 10,000)</span></label>
+          <input class="form-control" id="up-qty" type="text" inputmode="numeric" oninput="blockNonPosInt(this);liveCheckQty('up-qty','fe-up-qty')">
+          <span class="field-error" id="fe-up-qty"></span>
+        </div>
+        <div class="flex gap-1">
+          <button class="btn btn-primary" onclick="updateProduct()">Update</button>
+          <button class="btn btn-outline" onclick="resetUpdateForm()">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cancel Order Admin -->
+    <div id="section-cancel-order" class="hidden">
+      <div class="section-head"><h2>Cancel an Order</h2></div>
+      <div class="card" style="max-width:500px">
+        <div id="co-alert"></div>
+        <div class="form-group"><label>Order ID</label><input class="form-control" id="co-id" placeholder="e.g. 1001" type="number"></div>
+        <button class="btn btn-danger" onclick="adminCancelOrder()">Cancel Order</button>
+      </div>
+    </div>
+
+    <!-- View Feedback -->
+    <div id="section-feedback" class="hidden">
+      <div class="section-head"><h2>Customer Feedbacks</h2></div>
+      <div id="feedback-list"></div>
+    </div>
+
+  </main>
+</div>
+<footer id="main-footer"></footer>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireAdminAuth();
+if (!sess) throw new Error();
+renderAdminNav();
+
+const MAX_PRICE = 200000;
+const MAX_QTY   = 10000;
+
+const SECTIONS = ['home','add-products','view-products','view-customers','all-orders','search-product','delete-product','update-product','cancel-order','feedback'];
+function showSection(name) {
+  SECTIONS.forEach(s => document.getElementById('section-'+s).classList.toggle('hidden', s !== name));
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.toggle('active', l.dataset.section === name));
+  if (name === 'home')          renderDashboard();
+  if (name === 'view-products') renderProductsTable();
+  if (name === 'view-customers')renderCustomersTable();
+  if (name === 'all-orders')    filterOrders('');
+  if (name === 'feedback')      renderFeedbacks();
+}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+const sidebar = document.getElementById('sidebar');
+const links = [
+  { section:'home',           icon:'🏠',  label:'Home' },
+  { section:'add-products',   icon:'➕',  label:'Add Product' },
+  { section:'view-products',  icon:'📦',  label:'View Products' },
+  { section:'search-product', icon:'🔍',  label:'Search Product' },
+  { section:'delete-product', icon:'🗑️', label:'Delete Product' },
+  { section:'update-product', icon:'✏️', label:'Update Product' },
+  { section:'view-customers', icon:'👥',  label:'Customers' },
+  { section:'all-orders',     icon:'📋',  label:'All Orders' },
+  { section:'cancel-order',   icon:'🚫',  label:'Cancel Order' },
+  { section:'feedback',       icon:'💬',  label:'Feedbacks' },
+];
+sidebar.innerHTML = links.map(l =>
+  `<button class="sidebar-link" data-section="${l.section}" onclick="showSection('${l.section}')">${l.icon} ${l.label}</button>`
+).join('');
+
+/* ── Dashboard ───────────────────────────────────────── */
+function renderDashboard() {
+  const products  = Store.getProducts();
+  const customers = Store.getCustomers();
+  const orders    = Store.getOrders();
+  const feedbacks = Store.getFeedbacks();
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><span class="stat-icon">📦</span><div><p class="stat-label">Products</p><p class="stat-val">${products.length}</p></div></div>
+    <div class="stat-card"><span class="stat-icon">👥</span><div><p class="stat-label">Customers</p><p class="stat-val">${customers.length}</p></div></div>
+    <div class="stat-card"><span class="stat-icon">🛍️</span><div><p class="stat-label">Orders</p><p class="stat-val">${orders.length}</p></div></div>
+    <div class="stat-card"><span class="stat-icon">💬</span><div><p class="stat-label">Feedbacks</p><p class="stat-val">${feedbacks.length}</p></div></div>
+  `;
+  const recent = orders.slice(-5).reverse();
+  document.getElementById('recent-orders').innerHTML = recent.length
+    ? recent.map(o=>`<div class="flex justify-between" style="padding:.5rem 0;border-bottom:1px solid var(--border)"><span>#${o.orderId} — ${o.customerName||'—'}</span>${statusBadge(o.orderStatus)}</div>`).join('')
+    : '<p class="text-muted">No orders yet.</p>';
+}
+
+/* ── Live price / qty checks ─────────────────────────── */
+function liveCheckPrice(inputId, errId) {
+  const val = parseInt(document.getElementById(inputId).value, 10);
+  const errEl = document.getElementById(errId);
+  if (!errEl) return;
+  if (!val || val <= 0) { errEl.textContent = '❌ Price must be greater than 0.'; return; }
+  if (val > MAX_PRICE)  { errEl.textContent = `❌ Price cannot exceed ₹${MAX_PRICE.toLocaleString()}.`; return; }
+  errEl.textContent = '';
+}
+function liveCheckQty(inputId, errId) {
+  const val = parseInt(document.getElementById(inputId).value, 10);
+  const errEl = document.getElementById(errId);
+  if (!errEl) return;
+  if (!val || val <= 0) { errEl.textContent = '❌ Quantity must be greater than 0.'; return; }
+  if (val > MAX_QTY)    { errEl.textContent = `❌ Quantity cannot exceed ${MAX_QTY.toLocaleString()}.`; return; }
+  errEl.textContent = '';
+}
+
+/* ── Input blocker helpers ───────────────────────────── */
+function blockNonAlpha(input) {
+  const cur   = input.value;
+  const clean = cur.replace(/[^a-zA-Z\s]/g, '');
+  if (clean !== cur) {
+    const pos = input.selectionStart - (cur.length - clean.length);
+    input.value = clean;
+    input.setSelectionRange(pos, pos);
+    input.style.borderColor = 'var(--danger)';
+    clearTimeout(input._alphaTimer);
+    input._alphaTimer = setTimeout(() => input.style.borderColor = '', 800);
+  }
+}
+function blockNonEmoji(input) {
+  const cur   = input.value;
+  const clean = [...cur].filter(ch => ch.codePointAt(0) > 0x7E).join('');
+  if (clean !== cur) {
+    input.value = clean;
+    input.style.borderColor = 'var(--danger)';
+    clearTimeout(input._emojiTimer);
+    input._emojiTimer = setTimeout(() => input.style.borderColor = '', 800);
+  }
+}
+function blockNonPosInt(input) {
+  const cur       = input.value;
+  const digitsOnly= cur.replace(/\D/g, '');
+  const clean     = digitsOnly === '' ? '' : String(parseInt(digitsOnly, 10) || '').replace('NaN','');
+  if (clean !== cur) {
+    input.value = clean;
+    if (cur !== clean) {
+      input.style.borderColor = 'var(--danger)';
+      clearTimeout(input._intTimer);
+      input._intTimer = setTimeout(() => input.style.borderColor = '', 800);
+    }
+  }
+}
+
+/* ── Add Product ─────────────────────────────────────── */
+function addProduct() {
+  const alertEl = document.getElementById('add-prod-alert');
+  alertEl.innerHTML = '';
+  // clear inline errors
+  ['fe-ap-name','fe-ap-price','fe-ap-qty'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
+
+  const nameRaw  = document.getElementById('ap-name').value.trim();
+  const imgRaw   = document.getElementById('ap-img').value.trim();
+  const priceRaw = document.getElementById('ap-price').value.trim();
+  const cat      = document.getElementById('ap-cat').value;
+  const desc     = document.getElementById('ap-desc').value.trim();
+  const qtyRaw   = document.getElementById('ap-qty').value.trim();
+  const status   = document.getElementById('ap-status').value;
+
+  let valid = true;
+
+  if (!nameRaw) { document.getElementById('fe-ap-name').textContent = '❌ Product name is required.'; valid=false; }
+  else if (!/^[a-zA-Z\s]+$/.test(nameRaw)) { document.getElementById('fe-ap-name').textContent = '❌ Alphabets only.'; valid=false; }
+
+  if (!priceRaw) { document.getElementById('fe-ap-price').textContent = '❌ Price is required.'; valid=false; }
+  else {
+    const price = parseInt(priceRaw,10);
+    if (price <= 0) { document.getElementById('fe-ap-price').textContent='❌ Must be > 0.'; valid=false; }
+    else if (price > MAX_PRICE) { document.getElementById('fe-ap-price').textContent=`❌ Cannot exceed ₹${MAX_PRICE.toLocaleString()}.`; valid=false; }
+  }
+
+  if (!qtyRaw) { document.getElementById('fe-ap-qty').textContent = '❌ Quantity is required.'; valid=false; }
+  else {
+    const qty = parseInt(qtyRaw,10);
+    if (qty <= 0) { document.getElementById('fe-ap-qty').textContent='❌ Must be > 0.'; valid=false; }
+    else if (qty > MAX_QTY) { document.getElementById('fe-ap-qty').textContent=`❌ Cannot exceed ${MAX_QTY.toLocaleString()}.`; valid=false; }
+  }
+
+  if (!cat || !desc) { alertEl.innerHTML='<div class="alert alert-danger">⚠️ Please fill in all required fields.</div>'; valid=false; }
+
+  if (!valid) return;
+
+  const price = parseInt(priceRaw,10);
+  const qty   = parseInt(qtyRaw,10);
+  const img   = imgRaw || '📦';
+
+  if (imgRaw) {
+    const hasNonEmoji = [...imgRaw].some(ch => ch.codePointAt(0) <= 0x7E);
+    if (hasNonEmoji) { alertEl.innerHTML='<div class="alert alert-danger">⚠️ Product Image must be an emoji only.</div>'; return; }
+  }
+
+  if (Store.getProducts().some(p => p.productName.toLowerCase() === nameRaw.toLowerCase())) {
+    alertEl.innerHTML='<div class="alert alert-danger">⚠️ A product with this name already exists.</div>'; return;
+  }
+
+  const p = Store.addProduct({ productName: nameRaw, productImage: img, productPrice: price, productCategory: cat, productDescription: desc, quantityAvailable: qty, status });
+  alertEl.innerHTML = `<div class="alert alert-success">✅ Product "<strong>${nameRaw}</strong>" added with ID <strong>${p.productId}</strong>.</div>`;
+  ['ap-name','ap-price','ap-desc','ap-qty'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('ap-img').value='📦';
+}
+
+/* ── Products Table ──────────────────────────────────── */
+let vpPage = 1;
+function renderProductsTable() {
+  const q = document.getElementById('vp-search')?.value.toLowerCase() || '';
+  const all = Store.getProducts().filter(p =>
+    !q || p.productName.toLowerCase().includes(q) || p.productCategory.toLowerCase().includes(q) ||
+    p.productId.includes(q)
+  );
+  const { items, total } = paginate(all, vpPage, 10);
+  document.getElementById('products-table-body').innerHTML = items.map(p => `
+    <tr>
+      <td>${p.productId}</td><td>${p.productName}</td><td>${p.productCategory}</td>
+      <td>${rupee(p.productPrice)}</td>
+      <td>${p.quantityAvailable > 0 ? p.quantityAvailable : '<span style="color:var(--danger);font-weight:600">Out of Stock</span>'}</td>
+      <td>${statusBadge(p.status)}</td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn btn-outline btn-sm" onclick="loadUpdateForm('${p.productId}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="quickDelete('${p.productId}')">🗑️</button>
+          ${p.deleted ? `<button class="btn btn-success btn-sm" onclick="restoreProduct('${p.productId}')">↩️</button>` : ''}
+        </div>
+      </td>
+    </tr>
+`).join('') || '<tr><td colspan="7" class="center text-muted">No products found</td></tr>';
+  renderPagination(document.getElementById('vp-pagination'), vpPage, total, p => { vpPage=p; renderProductsTable(); });
+  document.getElementById('vp-download').innerHTML = all.length > 10
+    ? `<button class="btn btn-outline btn-sm" onclick="downloadProducts()">⬇️ Download all ${all.length} products (.csv)</button>` : '';
+}
+function quickDelete(id) {
+  const p = Store.getProductById(id); if (!p) return;
+  Store.softDeleteProduct(id); toast(`"${p.productName}" soft-deleted.`,'info'); renderProductsTable();
+}
+function restoreProduct(id) {
+  Store.restoreProduct(id); toast('Product restored.','success'); renderProductsTable();
+}
+function downloadProducts() {
+  const all = Store.getProducts();
+  const rows = all.map(p=>`${p.productId},"${p.productName}","${p.productCategory}",${p.productPrice},"${p.productDescription}",${p.quantityAvailable},${p.status}`).join('\n');
+const blob = new Blob(['Product ID,Name,Category,Price,Description,Quantity,Status\n'+rows],{type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='products.csv'; a.click();
+}
+ 
+/* ── Customers Table ─────────────────────────────────── */
+let vcPage = 1;
+function renderCustomersTable() {
+  const q = document.getElementById('vc-search')?.value.toLowerCase() || '';
+  const all = Store.getCustomers().filter(c =>
+    !q || c.customerId.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) ||
+    c.email.toLowerCase().includes(q) || c.city.toLowerCase().includes(q)
+  );
+  const { items, total } = paginate(all, vcPage, 10);
+  document.getElementById('customers-table-body').innerHTML = items.map(c=>`
+    <tr><td>${c.customerId}</td><td>${c.name}</td><td>${c.country}</td>
+    <td>${c.state}</td><td>${c.city}</td><td>${c.phoneNumber}</td>
+    <td>${c.address1}</td><td>${c.address2||'—'}</td><td>${c.email}</td></tr>
+`).join('') || '<tr><td colspan="9" class="center text-muted">No customers found</td></tr>';
+  renderPagination(document.getElementById('vc-pagination'), vcPage, total, p => { vcPage=p; renderCustomersTable(); });
+}
+ 
+/* ── All Orders (with full delivery status flow) ─────── */
+let currentFilter = '';
+function filterOrders(status) {
+  currentFilter = status;
+  const filterIds = ['all','Confirmed','Out for Delivery','In Transit','Delivered','Cancelled'];
+  filterIds.forEach(f => {
+    const btn = document.getElementById('filter-'+(f==='all'?'all':f));
+    if (btn) { btn.classList.toggle('btn-primary', (status||'all') === (f==='all'?'all':f)); btn.classList.toggle('btn-outline', (status||'all') !== (f==='all'?'all':f)); }
+  });
+const orders = Store.getOrders().filter(o => !status || o.orderStatus === status).reverse();
+  const cont = document.getElementById('all-orders-list');
+  if (!orders.length) { cont.innerHTML='<div class="empty-state"><span class="icon">📋</span><h3>No orders</h3></div>'; return; }
+ 
+  cont.innerHTML = orders.map(o => {
+    const isDelivered  = o.orderStatus === 'Delivered';
+    const isCancelled  = o.orderStatus === 'Cancelled';
+    const isTerminal   = isDelivered || isCancelled;
+ 
+    // Build status action buttons (locked once delivered or cancelled)
+    let actionBtns = '';
+    if (!isTerminal) {
+      // Show only the NEXT valid statuses
+      const nextStatuses = getNextStatuses(o.orderStatus);
+      actionBtns = nextStatuses.map(s =>
+        `<button class="btn btn-outline btn-sm" onclick="updateStatus(${o.orderId},'${s}')">${statusIcon(s)} ${s}</button>`
+      ).join('');
+    } else {
+actionBtns = `<span style="color:var(--muted);font-size:.8rem">${isDelivered ? '✅ Order Delivered — no further actions' : '🚫 Order Cancelled'}</span>`;
+    }
+ 
+    return `
+    <div class="card mb-2" style="padding:1rem 1.5rem">
+      <div class="flex justify-between wrap gap-1 mb-1">
+        <span class="fw-600">#${o.orderId}</span>${statusBadge(o.orderStatus)}
+      </div>
+      <div class="flex gap-1 wrap mt-1 mb-1">${actionBtns}</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;font-size:.82rem">
+        <div><p class="text-muted">Customer</p><p>${o.customerName||o.customerId}</p></div>
+        <div><p class="text-muted">Order Date</p><p>${fmtDate(o.orderDate)}</p></div>
+        <div><p class="text-muted">Arriving</p><p>${fmtDate(o.arrivingDate)}</p></div>
+        <div><p class="text-muted">Total</p><p style="color:var(--accent)">${rupee(o.totalPrice)}</p></div>
+        <div><p class="text-muted">Address</p><p>${o.address||'—'}</p></div>
+      </div>
+<details style="margin-top:.75rem">
+        <summary style="cursor:pointer;color:var(--accent);font-size:.85rem">Products (${o.products.length})</summary>
+        <div class="table-wrap mt-1"><table>
+          <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Qty</th></tr></thead>
+          <tbody>${o.products.map(p=>`<tr><td>${p.productId}</td><td>${p.productName}</td><td>${p.productCategory}</td><td>${rupee(p.productPrice)}</td><td>${p.productQuantity}</td></tr>`).join('')}</tbody>
+        </table></div>
+      </details>
+    </div>`;
+  }).join('');
+}
+ 
+function getNextStatuses(currentStatus) {
+  const flow = {
+    'Confirmed':        ['Out for Delivery','Cancelled'],
+    'Out for Delivery': ['In Transit'],
+    'In Transit':       ['Delivered'],
+  };
+  return flow[currentStatus] || [];
+}
+function statusIcon(s) {
+  const icons = { 'Out for Delivery':'🚚', 'In Transit':'📦', 'Delivered':'✅', 'Cancelled':'🚫' };
+  return icons[s] || '▶';
+}
+function updateStatus(id, status) {
+  const order = Store.getOrderById(id);
+  if (!order) return;
+  // Block any status change on delivered/cancelled
+  if (order.orderStatus === 'Delivered' || order.orderStatus === 'Cancelled') {
+    toast('This order cannot be updated anymore.','error'); return;
+  }
+  Store.updateOrderStatus(id, status);
+  toast(`Order #${id} → ${status}`, 'success');
+  filterOrders(currentFilter);
+}
+ 
+/* ── Search Product ──────────────────────────────────── */
+function searchProduct() {
+  const id    = document.getElementById('sp-id').value.trim();
+  const errEl = document.getElementById('sp-error');
+  const res   = document.getElementById('sp-result');
+  errEl.classList.add('hidden'); res.innerHTML='';
+  if (!id) { errEl.textContent='⚠️ Enter a Product ID.'; return errEl.classList.remove('hidden'); }
+const p = Store.getProductById(id);
+  if (!p) { errEl.textContent='Product ID not found.'; return errEl.classList.remove('hidden'); }
+  res.innerHTML = `<div class="card" style="padding:0"><div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Category</th><th>Description</th><th>Stock</th><th>Status</th></tr></thead>
+    <tbody><tr><td>${p.productId}</td><td>${p.productName}</td><td>${rupee(p.productPrice)}</td><td>${p.productCategory}</td><td>${p.productDescription}</td><td>${p.quantityAvailable}</td><td>${statusBadge(p.status)}</td></tr></tbody>
+  </table></div></div>`;
+}
+ 
+/* ── Delete Product ──────────────────────────────────── */
+function deleteProduct() {
+  const id    = document.getElementById('dp-id').value.trim();
+  const name  = document.getElementById('dp-name').value.trim().toLowerCase();
+  const errEl = document.getElementById('dp-error');
+  const sucEl = document.getElementById('dp-success');
+errEl.classList.add('hidden'); sucEl.classList.add('hidden');
+  let product = id ? Store.getProductById(id) : Store.getProducts().find(p => p.productName.toLowerCase() === name);
+  if (!product) { errEl.textContent = 'Product not found.'; return errEl.classList.remove('hidden'); }
+  if (product.deleted) { sucEl.textContent = `"${product.productName}" is already deleted.`; return sucEl.classList.remove('hidden'); }
+  Store.softDeleteProduct(product.productId);
+  sucEl.innerHTML = `✅ Product "<strong>${product.productName}</strong>" deleted successfully.`;
+  sucEl.classList.remove('hidden');
+}
+ 
+/* ── Update Product ──────────────────────────────────── */
+let updateProductId = null;
+function loadUpdateForm(id) {
+  const p = Store.getProductById(id); if (!p) return;
+  updateProductId = id;
+  showSection('update-product');
+  document.getElementById('up-id').value    = p.productId;
+document.getElementById('up-name').value  = p.productName;
+  document.getElementById('up-price').value = p.productPrice;
+  document.getElementById('up-cat').value   = p.productCategory;
+  document.getElementById('up-desc').value  = p.productDescription;
+  document.getElementById('up-qty').value   = p.quantityAvailable;
+}
+function resetUpdateForm() { if (updateProductId) loadUpdateForm(updateProductId); }
+ 
+async function updateProduct() {
+  const alertEl  = document.getElementById('up-alert');
+  alertEl.innerHTML = '';
+  ['fe-up-name','fe-up-price','fe-up-qty'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
+ 
+  const nameRaw  = document.getElementById('up-name').value.trim();
+  const priceRaw = document.getElementById('up-price').value.trim();
+  const cat      = document.getElementById('up-cat').value;
+  const desc     = document.getElementById('up-desc').value.trim();
+const qtyRaw   = document.getElementById('up-qty').value.trim();
+  let valid = true;
+ 
+  if (!nameRaw) { document.getElementById('fe-up-name').textContent='❌ Name is required.'; valid=false; }
+  else if (!/^[a-zA-Z\s]+$/.test(nameRaw)) { document.getElementById('fe-up-name').textContent='❌ Alphabets only.'; valid=false; }
+ 
+  if (!priceRaw) { document.getElementById('fe-up-price').textContent='❌ Price is required.'; valid=false; }
+  else {
+    const price = parseInt(priceRaw,10);
+    if (price <= 0) { document.getElementById('fe-up-price').textContent='❌ Must be > 0.'; valid=false; }
+    else if (price > MAX_PRICE) { document.getElementById('fe-up-price').textContent=`❌ Cannot exceed ₹${MAX_PRICE.toLocaleString()}.`; valid=false; }
+  }
+ 
+  if (!qtyRaw) { document.getElementById('fe-up-qty').textContent='❌ Quantity is required.'; valid=false; }
+  else {
+    const qty = parseInt(qtyRaw,10);
+if (qty < 0) { document.getElementById('fe-up-qty').textContent='❌ Must be 0 or more.'; valid=false; }
+    else if (qty > MAX_QTY) { document.getElementById('fe-up-qty').textContent=`❌ Cannot exceed ${MAX_QTY.toLocaleString()}.`; valid=false; }
+  }
+ 
+  if (!cat || !desc) { alertEl.innerHTML='<div class="alert alert-danger">⚠️ Fill in all fields.</div>'; valid=false; }
+  if (!valid) return;
+ 
+  const price = parseInt(priceRaw,10);
+  const qty   = parseInt(qtyRaw,10);
+  const ok = await confirm('Update product with these changes?');
+  if (!ok) return;
+  Store.updateProduct(updateProductId, { productName: nameRaw, productPrice: price, productCategory: cat, productDescription: desc, quantityAvailable: qty });
+  const p = Store.getProductById(updateProductId);
+  alertEl.innerHTML = `<div class="alert alert-success">✅ Updated — ${p.productName} | ₹${p.productPrice} | Qty: ${p.quantityAvailable}</div>`;
+}
+/* ── Admin Cancel Order ──────────────────────────────── */
+async function adminCancelOrder() {
+  const alertEl = document.getElementById('co-alert');
+  alertEl.innerHTML='';
+  const id = parseInt(document.getElementById('co-id').value);
+  if (!id) return alertEl.innerHTML='<div class="alert alert-danger">Please enter a valid Order ID.</div>';
+  const order = Store.getOrderById(id);
+  if (!order) return alertEl.innerHTML='<div class="alert alert-danger">Order not found.</div>';
+  if (order.orderStatus === 'Delivered')
+    return alertEl.innerHTML='<div class="alert alert-danger">❌ Cannot cancel a Delivered order.</div>';
+  if (order.orderStatus === 'Cancelled')
+    return alertEl.innerHTML='<div class="alert alert-danger">This order is already cancelled.</div>';
+  if (!['Confirmed','Out for Delivery'].includes(order.orderStatus))
+    return alertEl.innerHTML=`<div class="alert alert-danger">Only "Confirmed" or "Out for Delivery" orders can be cancelled. Status: "${order.orderStatus}".</div>`;
+  const ok = await confirm(`Cancel order #${id}?`);
+  if (!ok) return;
+Store.updateOrderStatus(id, 'Cancelled');
+  alertEl.innerHTML=`<div class="alert alert-success">✅ Order #${id} cancelled.</div>`;
+}
+ 
+/* ── Feedbacks ───────────────────────────────────────── */
+function renderFeedbacks() {
+  const fbs  = Store.getFeedbacks().reverse();
+  const cont = document.getElementById('feedback-list');
+  if (!fbs.length) { cont.innerHTML='<div class="empty-state"><span class="icon">💬</span><h3>No feedbacks yet</h3></div>'; return; }
+  cont.innerHTML = `<div class="card" style="padding:0"><div class="table-wrap"><table>
+    <thead><tr><th>Order ID</th><th>Customer ID</th><th>Customer Name</th><th>Feedback</th><th>Rating</th><th>Date</th></tr></thead>
+    <tbody>${fbs.map(f=>`<tr><td>#${f.orderId}</td><td>${f.customerId}</td><td>${f.customerName}</td><td style="max-width:200px">${f.feedbackDescription}</td><td>${'⭐'.repeat(+f.rating||1)}</td><td>${fmtDate(f.createdAt)}</td></tr>`).join('')}</tbody>
+  </table></div></div>`;
+}
+ 
+showSection('home');
+renderSiteFooter();
+</script>
+</body>
+</html>

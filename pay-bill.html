@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payment — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+.confirm-overlay {
+  position: fixed; inset: 0; z-index: 3000;
+  background: rgba(0,0,0,.78);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  animation: fadeIn .2s ease;
+}
+.confirm-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem 2rem 1.5rem;
+  max-width: 420px; width: 100%;
+  box-shadow: 0 16px 48px rgba(0,0,0,.55);
+  animation: scaleIn .25s ease;
+  text-align: center;
+}
+.confirm-box .icon { font-size: 3rem; margin-bottom: .75rem; display: block; }
+.confirm-box h3 { font-size: 1.3rem; margin-bottom: .4rem; }
+.confirm-box p { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.6; }
+.confirm-box .row { display: flex; gap: .75rem; justify-content: center; }
+.input-wrap { position: relative; }
+.input-wrap .form-control { padding-right: 2.8rem; }
+.input-wrap .form-control[type="password"] { background: #111927; }
+.eye-btn {
+  position: absolute; right: .75rem; top: 50%; transform: translateY(-50%);
+  background: rgba(240,165,0,.14); border: 1px solid rgba(240,165,0,.3); border-radius: 999px; cursor: pointer;
+  padding: 0; line-height: 1; font-size: 1.1rem; color: var(--muted);
+  width: 1.6rem; height: 1.6rem;
+}
+.eye-btn:hover { color: var(--text); }
+.flash-red { border-color: var(--danger) !important; transition: border-color .1s; }
+.field-error { color: var(--danger); font-size: .78rem; margin-top: .25rem; min-height: 1rem; display: block; }
+.dummy-hint {
+  background: rgba(240,165,0,.08);
+  border: 1px solid rgba(240,165,0,.25);
+  border-radius: 10px;
+  padding: .75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: .82rem;
+  line-height: 1.7;
+}
+.dummy-hint strong { color: var(--accent); }
+</style>
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <div class="section-head"><h2>💳 Payment</h2><p style="color:var(--muted)">Complete your order securely</p></div>
+    <div id="pay-content" style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start">
+      <div class="card">
+        <h3 class="card-title mb-2">Select Payment Method</h3>
+        <div id="pay-method-tabs" class="flex gap-1 wrap mb-2">
+          <button class="btn btn-primary" id="tab-cc"  onclick="selectTab('cc')">💳 Credit Card</button>
+          <button class="btn btn-outline" id="tab-dc"  onclick="selectTab('dc')">🏦 Debit Card</button>
+          <button class="btn btn-outline" id="tab-nb"  onclick="selectTab('nb')">🌐 Net Banking</button>
+          <button class="btn btn-outline" id="tab-upi" onclick="selectTab('upi')">📱 UPI</button>
+        </div>
+
+        <!-- ═══════════ CREDIT CARD ═══════════ -->
+        <div id="form-cc">
+          <div class="dummy-hint">
+            🔐 <strong>Test Credentials — Credit Card</strong><br>
+            Card No: <code>4111111111111111</code> &nbsp;|&nbsp; Expiry: <code>12/27</code> &nbsp;|&nbsp; CVV: <code>123</code> &nbsp;|&nbsp; Name: <code>Demo User</code>
+          </div>
+          <div class="form-group">
+            <label>Card Number <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(exactly 16 digits)</span></label>
+            <input class="form-control" id="cc-num" type="text" inputmode="numeric" maxlength="16" placeholder="1234567890123456" oninput="onlyDigits(this,16);clearFE('fe-cc-num')">
+            <span class="field-error" id="fe-cc-num"></span>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Expiry Date <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(MM/YY)</span></label>
+              <input class="form-control" id="cc-exp" type="text" inputmode="numeric" maxlength="5" placeholder="MM/YY" oninput="formatExpiry(this);clearFE('fe-cc-exp')">
+              <span class="field-error" id="fe-cc-exp"></span>
+            </div>
+            <div class="form-group">
+              <label>CVV <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(3–4 digits)</span></label>
+              <div class="input-wrap">
+                <input class="form-control" id="cc-cvv" type="password" inputmode="numeric" maxlength="4" placeholder="●●●" oninput="onlyDigits(this,4);clearFE('fe-cc-cvv')">
+                <button type="button" class="eye-btn" id="eye-cc-cvv" onclick="toggleEye('cc-cvv','eye-cc-cvv')">👁</button>
+              </div>
+              <span class="field-error" id="fe-cc-cvv"></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Name on Card <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(alphabets only)</span></label>
+            <input class="form-control" id="cc-name" type="text" placeholder="As printed on card" oninput="onlyAlpha(this);clearFE('fe-cc-name')">
+            <span class="field-error" id="fe-cc-name"></span>
+          </div>
+        </div>
+
+        <!-- ═══════════ DEBIT CARD ═══════════ -->
+        <div id="form-dc" class="hidden">
+          <div class="dummy-hint">
+            🔐 <strong>Test Credentials — Debit Card</strong><br>
+            Card No: <code>5200000000000007</code> &nbsp;|&nbsp; Expiry: <code>08/26</code> &nbsp;|&nbsp; CVV: <code>456</code> &nbsp;|&nbsp; Name: <code>Test Customer</code>
+          </div>
+          <div class="form-group">
+            <label>Card Number <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(exactly 16 digits)</span></label>
+            <input class="form-control" id="dc-num" type="text" inputmode="numeric" maxlength="16" placeholder="1234567890123456" oninput="onlyDigits(this,16);clearFE('fe-dc-num')">
+            <span class="field-error" id="fe-dc-num"></span>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Expiry Date <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(MM/YY)</span></label>
+              <input class="form-control" id="dc-exp" type="text" inputmode="numeric" maxlength="5" placeholder="MM/YY" oninput="formatExpiry(this);clearFE('fe-dc-exp')">
+              <span class="field-error" id="fe-dc-exp"></span>
+            </div>
+            <div class="form-group">
+              <label>CVV <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(3–4 digits)</span></label>
+              <div class="input-wrap">
+                <input class="form-control" id="dc-cvv" type="password" inputmode="numeric" maxlength="4" placeholder="●●●" oninput="onlyDigits(this,4);clearFE('fe-dc-cvv')">
+                <button type="button" class="eye-btn" id="eye-dc-cvv" onclick="toggleEye('dc-cvv','eye-dc-cvv')">👁</button>
+              </div>
+              <span class="field-error" id="fe-dc-cvv"></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Name on Card <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(alphabets only)</span></label>
+            <input class="form-control" id="dc-name" type="text" placeholder="As printed on card" oninput="onlyAlpha(this);clearFE('fe-dc-name')">
+            <span class="field-error" id="fe-dc-name"></span>
+          </div>
+        </div>
+
+        <!-- ═══════════ NET BANKING ═══════════ -->
+        <div id="form-nb" class="hidden">
+          <div class="dummy-hint">
+            🔐 <strong>Test Credentials — Net Banking</strong><br>
+            Bank: <code>HDFC</code> &nbsp;|&nbsp; User ID: <code>demouser123</code> &nbsp;|&nbsp; Password: <code>NetBank@456</code>
+          </div>
+          <div class="form-group">
+            <label>Bank Name</label>
+            <select class="form-control" id="nb-bank" onchange="clearFE('fe-nb-bank')">
+              <option value="">Select your bank</option>
+              <option>SBI</option><option>HDFC</option><option>ICICI</option>
+              <option>Axis Bank</option><option>Kotak</option><option>PNB</option>
+            </select>
+            <span class="field-error" id="fe-nb-bank"></span>
+          </div>
+          <div class="form-group">
+            <label>User ID</label>
+            <input class="form-control" id="nb-uid" placeholder="Net banking user ID" oninput="clearFE('fe-nb-uid')">
+            <span class="field-error" id="fe-nb-uid"></span>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <div class="input-wrap">
+              <input class="form-control" id="nb-pwd" type="password" placeholder="Net banking password" oninput="clearFE('fe-nb-pwd')">
+              <button type="button" class="eye-btn" id="eye-nb-pwd" onclick="toggleEye('nb-pwd','eye-nb-pwd')">👁</button>
+            </div>
+            <span class="field-error" id="fe-nb-pwd"></span>
+          </div>
+        </div>
+
+        <!-- ═══════════ UPI ═══════════ -->
+        <div id="form-upi" class="hidden">
+          <div class="dummy-hint">
+            🔐 <strong>Test Credentials — UPI</strong><br>
+            UPI ID: <code>demo@shopxpress</code>
+          </div>
+          <div class="form-group">
+            <label>UPI ID <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(format: yourname@bankname)</span></label>
+            <input class="form-control" id="upi-id" placeholder="e.g. rahul@sbi" oninput="liveUpiHint(this);clearFE('fe-upi-id')">
+            <p id="upi-hint" style="font-size:.75rem;margin-top:.35rem;min-height:1rem"></p>
+            <span class="field-error" id="fe-upi-id"></span>
+          </div>
+        </div>
+
+        <div id="pay-error" class="alert alert-danger hidden mt-2"></div>
+        <button class="btn btn-primary btn-full btn-lg mt-2" onclick="validateAndConfirm()">
+          Review &amp; Pay →
+        </button>
+      </div>
+
+      <!-- Summary -->
+      <div>
+        <div class="card">
+          <h3 class="card-title" style="margin-bottom:1rem">Order Summary</h3>
+          <div id="summary-items"></div>
+          <hr class="divider">
+          <div class="flex justify-between fw-600" style="font-size:1.1rem">
+            <span>Total</span>
+            <span style="color:var(--accent)" id="summary-total">₹0</span>
+          </div>
+        </div>
+        <div class="card mt-2">
+          <h4 style="margin-bottom:.5rem;font-size:.95rem">🏠 Delivery Address</h4>
+          <p id="delivery-addr" class="text-muted" style="font-size:.85rem;line-height:1.7"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success screen -->
+    <div id="success-screen" class="hidden">
+      <div class="card center" style="max-width:540px;margin:4rem auto;padding:3rem">
+        <div style="font-size:4rem;margin-bottom:1rem">🎉</div>
+        <h2 style="color:var(--success);margin-bottom:.5rem">Order Placed!</h2>
+        <p class="text-muted mb-2" id="order-ack"></p>
+        <a href="orders.html" class="btn btn-primary">View My Orders →</a>
+      </div>
+    </div>
+  </div>
+</div>
+<footer id="main-footer"></footer>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error();
+renderCustomerNav('');
+
+const cart = Store.getCart();
+if (!cart.length) window.location.href = 'cart.html';
+
+// ── Dummy credentials ─────────────────────────────────
+const DUMMY = {
+  cc:  { num: '4111111111111111', exp: '12/27', cvv: '123', name: 'demo user' },
+  dc:  { num: '5200000000000007', exp: '08/26', cvv: '456', name: 'test customer' },
+  nb:  { bank: 'HDFC', uid: 'demouser123', pwd: 'NetBank@456' },
+  upi: { id: 'demo@shopxpress' }
+};
+
+// ── Render summary ────────────────────────────────────
+const si = document.getElementById('summary-items');
+let total = 0;
+cart.forEach(i => {
+  total += i.productPrice * i.quantity;
+  si.innerHTML += `<div class="flex justify-between mb-1">
+    <span class="text-muted" style="font-size:.85rem">${i.productName} ×${i.quantity}</span>
+    <span style="font-size:.85rem">${rupee(i.productPrice * i.quantity)}</span>
+  </div>`;
+});
+document.getElementById('summary-total').textContent = rupee(total);
+const cust = Store.getCustomerById(sess.customerId);
+document.getElementById('delivery-addr').textContent =
+  `${cust.address1}, ${cust.address2 ? cust.address2 + ', ' : ''}${cust.city}, ${cust.state} — ${cust.zipCode}`;
+
+// ── Tab switching ─────────────────────────────────────
+let currentTab = 'cc';
+function selectTab(tab) {
+  ['cc','dc','nb','upi'].forEach(t => {
+    document.getElementById('form-'+t).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab-'+t).classList.toggle('btn-primary', t === tab);
+    document.getElementById('tab-'+t).classList.toggle('btn-outline', t !== tab);
+  });
+  currentTab = tab;
+  document.getElementById('pay-error').classList.add('hidden');
+}
+
+// ── Inline error helpers ──────────────────────────────
+function clearFE(id) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = '';
+}
+function setFE(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; }
+}
+function markFieldErr(inputId, errId, msg) {
+  document.getElementById(inputId)?.classList.add('flash-red');
+  setFE(errId, msg);
+  clearTimeout(document.getElementById(inputId)?._ft);
+  if (document.getElementById(inputId)) {
+    document.getElementById(inputId)._ft = setTimeout(() =>
+      document.getElementById(inputId)?.classList.remove('flash-red'), 800);
+  }
+}
+
+// ── Input helpers ─────────────────────────────────────
+function onlyDigits(input, max) {
+  const clean = input.value.replace(/\D/g, '').slice(0, max);
+  if (clean !== input.value) { input.value = clean; flashRed(input); }
+}
+function onlyAlpha(input) {
+  const clean = input.value.replace(/[^a-zA-Z\s]/g, '');
+  if (clean !== input.value) { input.value = clean; flashRed(input); }
+}
+function formatExpiry(input) {
+  let raw = input.value.replace(/\D/g, '').slice(0, 4);
+  input.value = raw.length >= 3 ? raw.slice(0,2) + '/' + raw.slice(2) : raw;
+}
+function liveUpiHint(input) {
+  const val = input.value.trim();
+  const hint = document.getElementById('upi-hint');
+  if (!val) { hint.textContent = ''; return; }
+  const parts = val.split('@');
+  const ats = (val.match(/@/g) || []).length;
+  if (ats > 1) { hint.style.color='var(--danger)'; hint.textContent='✖ UPI ID can only have one @'; flashRed(input); }
+  else if (ats===1 && parts[0].length>0 && parts[1].length>0) { hint.style.color='var(--success)'; hint.textContent='✔ Valid UPI format'; }
+  else { hint.style.color='var(--muted)'; hint.textContent='Format: yourname@bankname'; }
+}
+function flashRed(input) {
+  input.classList.add('flash-red');
+  clearTimeout(input._ft);
+  input._ft = setTimeout(() => input.classList.remove('flash-red'), 800);
+}
+function toggleEye(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn   = document.getElementById(btnId);
+  input.type  = input.type === 'password' ? 'text' : 'password';
+  btn.textContent = input.type === 'password' ? '👁' : '🙈';
+}
+
+// ── Validation with dummy-data matching ───────────────
+function validateFields() {
+  let valid = true;
+
+  if (currentTab === 'cc' || currentTab === 'dc') {
+    const p = currentTab;
+    const d = DUMMY[p];
+    const num  = document.getElementById(p+'-num').value.trim();
+    const exp  = document.getElementById(p+'-exp').value.trim();
+    const cvv  = document.getElementById(p+'-cvv').value.trim();
+    const name = document.getElementById(p+'-name').value.trim();
+
+    // Format check first
+    if (!/^\d{16}$/.test(num)) {
+      markFieldErr(p+'-num','fe-'+p+'-num','❌ Card number must be exactly 16 digits.');
+      valid = false;
+    } else clearFE('fe-'+p+'-num');
+
+    if (!isExpiryValid(exp)) {
+      markFieldErr(p+'-exp','fe-'+p+'-exp','❌ Enter expiry in MM/YY format.');
+      valid = false;
+    } else if (!isExpiryWithinTenYears(exp)) {
+      markFieldErr(p+'-exp','fe-'+p+'-exp','❌ Expiry must be valid from this month up to the next 10 years.');
+      valid = false;
+    } else clearFE('fe-'+p+'-exp');
+
+    if (!/^\d{3,4}$/.test(cvv)) {
+      markFieldErr(p+'-cvv','fe-'+p+'-cvv','❌ CVV must be 3 or 4 digits.');
+      valid = false;
+    } else clearFE('fe-'+p+'-cvv');
+
+    if (!/^[A-Za-z\s]{2,}$/.test(name)) {
+      markFieldErr(p+'-name','fe-'+p+'-name','❌ Name must contain alphabets only (min 2 characters).');
+      valid = false;
+    } else clearFE('fe-'+p+'-name');
+
+  } else if (currentTab === 'nb') {
+    const d = DUMMY.nb;
+    const bank = document.getElementById('nb-bank').value;
+    const uid  = document.getElementById('nb-uid').value.trim();
+    const pwd  = document.getElementById('nb-pwd').value;
+
+    if (!bank) {
+      setFE('fe-nb-bank','❌ Please select your bank.');
+      valid = false;
+    } else clearFE('fe-nb-bank');
+
+    if (!uid) {
+      setFE('fe-nb-uid','❌ Please enter your net banking User ID.');
+      valid = false;
+    } else if (!/^[A-Za-z0-9._@-]{4,30}$/.test(uid)) {
+      setFE('fe-nb-uid','❌ User ID must be 4-30 characters (letters, numbers, . _ @ -).');
+      valid = false;
+    } else clearFE('fe-nb-uid');
+
+    if (!pwd) {
+      setFE('fe-nb-pwd','❌ Please enter your net banking password.');
+      valid = false;
+    } else if (pwd.length < 6) {
+      setFE('fe-nb-pwd','❌ Password must be at least 6 characters.');
+      valid = false;
+    } else clearFE('fe-nb-pwd');
+
+  } else if (currentTab === 'upi') {
+    const upi = document.getElementById('upi-id').value.trim();
+    if (!/^[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}$/.test(upi)) {
+      setFE('fe-upi-id','❌ UPI ID must be in format yourname@bankname');
+      valid = false;
+    } else clearFE('fe-upi-id');
+  }
+
+  return valid;
+}
+
+// ── Step 1: validate then show confirm popup ──────────
+function validateAndConfirm() {
+  const errEl = document.getElementById('pay-error');
+  errEl.classList.add('hidden');
+
+  if (!validateFields()) {
+    errEl.textContent = '⚠️ Please fix the errors highlighted above.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const labels = { cc:'Credit Card', dc:'Debit Card', nb:'Net Banking', upi:'UPI' };
+  let detail = '';
+  if (currentTab === 'cc' || currentTab === 'dc') {
+    const num = document.getElementById(currentTab+'-num').value;
+    detail = `${labels[currentTab]} — ending ••••${num.slice(-4)}`;
+  } else if (currentTab === 'nb') {
+    detail = `Net Banking — ${document.getElementById('nb-bank').value}`;
+  } else {
+    detail = `UPI — ${document.getElementById('upi-id').value.trim()}`;
+  }
+  showConfirmPopup(detail);
+}
+
+function isExpiryValid(exp) {
+  return /^(0[1-9]|1[0-2])\/\d{2}$/.test(exp);
+}
+
+function isExpiryWithinTenYears(exp) {
+  if (!isExpiryValid(exp)) return false;
+  const [mm, yy] = exp.split('/');
+  const month = Number(mm);
+  const year = 2000 + Number(yy);
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const maxYear = currentYear + 10;
+
+  if (year < currentYear || year > maxYear) return false;
+  if (year === currentYear && month < currentMonth) return false;
+  return true;
+}
+
+// ── Confirmation popup ────────────────────────────────
+function showConfirmPopup(detail) {
+  const existing = document.getElementById('pay-confirm-overlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.id = 'pay-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box">
+      <span class="icon">🔐</span>
+      <h3>Confirm Payment</h3>
+      <p>
+        You are about to place an order worth<br>
+        <strong style="color:var(--accent);font-size:1.2rem">${rupee(total)}</strong><br><br>
+        Payment via: <strong style="color:var(--text)">${detail}</strong><br><br>
+        This action cannot be undone. Do you want to proceed?
+      </p>
+      <div class="row">
+        <button class="btn btn-primary" onclick="placeOrder()">✅ Yes, Pay Now</button>
+        <button class="btn btn-outline" onclick="document.getElementById('pay-confirm-overlay').remove()">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+ 
+// ── Step 2: place the order ───────────────────────────
+function placeOrder() {
+const overlay = document.getElementById('pay-confirm-overlay');
+  if (overlay) overlay.remove();
+  const labels = { cc:'Credit Card', dc:'Debit Card', nb:'Net Banking', upi:'UPI' };
+
+  const stockIssue = cart.find(i => {
+    const p = Store.getProductById(i.productId);
+    return !p || p.deleted || p.status !== 'Active' || (Number(p.quantityAvailable) || 0) < i.quantity;
+  });
+
+  if (stockIssue) {
+    toast('Some items are out of stock or changed. Please review cart again.', 'error');
+    window.location.href = 'cart.html';
+    return;
+  }
+ 
+  // Deduct stock
+  cart.forEach(i => {
+    const p = Store.getProductById(i.productId);
+    if (p) {
+      const newQty = Math.max(0, p.quantityAvailable - i.quantity);
+      Store.updateProduct(i.productId, { quantityAvailable: newQty });
+    }
+  });
+ 
+  const order = Store.addOrder({
+    customerId: sess.customerId,
+    customerName: cust.name,
+    products: cart.map(i => ({
+      productId: i.productId,
+      productName: i.productName,
+      productCategory: i.productCategory,
+      productPrice: i.productPrice,
+      productDescription: i.productDescription || '',
+productQuantity: i.quantity,
+    })),
+    totalPrice: total,
+    address: `${cust.address1}, ${cust.city}, ${cust.state}`,
+    paymentMethod: labels[currentTab],
+  });
+  Store.clearCart();
+  document.getElementById('pay-content').classList.add('hidden');
+  document.getElementById('success-screen').classList.remove('hidden');
+  document.getElementById('order-ack').innerHTML =
+    `Your Order ID is <strong style="color:var(--accent)">#${order.orderId}</strong>.<br>
+     Thank you for shopping with ShopXpress!`;
+}
+
+renderSiteFooter();
+</script>
+</body>
+</html>

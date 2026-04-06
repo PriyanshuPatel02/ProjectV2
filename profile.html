@@ -1,0 +1,469 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profile — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <div class="section-head"><h2>👤 My Profile</h2><p style="color:var(--muted)">View and update your account details</p></div>
+
+    <div style="max-width:600px">
+      <div id="profile-alert"></div>
+      <div class="card">
+        <div class="form-group"><label>Customer ID</label><input class="form-control" id="f-id" readonly></div>
+        <div class="form-group"><label>Full Name</label><input class="form-control" id="f-name" maxlength="50"></div>
+        <div class="form-group"><label>Email</label><input class="form-control" id="f-email" readonly></div>
+        <div class="form-group"><label>Address Line 1</label><textarea class="form-control" id="f-addr1" rows="2"></textarea></div>
+        <div class="form-group"><label>Address Line 2 (Optional)</label><textarea class="form-control" id="f-addr2" rows="2"></textarea></div>
+        <div class="form-group"><label>Phone Number</label><input class="form-control" id="f-phone"></div>
+        <div class="form-group"><label>New Password (leave blank to keep current)</label><input class="form-control" id="f-pwd" type="password" placeholder="Min 10 characters"></div>
+        <div class="flex gap-1 mt-2">
+          <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+          <button class="btn btn-outline" onclick="loadProfile()">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<footer id="main-footer"></footer>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error();
+renderCustomerNav('');
+
+function loadProfile() {
+  const c = Store.getCustomerById(sess.customerId);
+  document.getElementById('f-id').value    = c.customerId;
+  document.getElementById('f-name').value  = c.name;
+  document.getElementById('f-email').value = c.email;
+  document.getElementById('f-addr1').value = c.address1;
+  document.getElementById('f-addr2').value = c.address2 || '';
+  document.getElementById('f-phone').value = c.phoneNumber;
+  document.getElementById('f-pwd').value   = '';
+}
+
+function saveProfile() {
+  const alertEl = document.getElementById('profile-alert');
+  alertEl.innerHTML = '';
+
+  const name  = document.getElementById('f-name').value.trim();
+  const addr1 = document.getElementById('f-addr1').value.trim();
+  const addr2 = document.getElementById('f-addr2').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const pwd   = document.getElementById('f-pwd').value;
+
+  if (!name || !addr1 || !phone) {
+    alertEl.innerHTML = '<div class="alert alert-danger">Please fill in all required fields.</div>';
+    return;
+  }
+  if (pwd && pwd.length < 10) {
+    alertEl.innerHTML = '<div class="alert alert-danger">New password must be at least 10 characters.</div>';
+    return;
+  }
+
+  const updates = { name, address1: addr1, address2: addr2, phoneNumber: phone };
+  if (pwd) updates.password = btoa(pwd);
+
+  Store.updateCustomer(sess.customerId, updates);
+  Store.setSession({ ...Store.getSession(), name });
+
+  alertEl.innerHTML = '<div class="alert alert-success">✅ Profile updated successfully!</div>';
+  renderCustomerNav('');
+  toast('Profile saved!', 'success');
+}
+
+loadProfile();
+renderSiteFooter();
+</script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profile — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+.field-error { color: var(--danger); font-size: .78rem; margin-top: .25rem; min-height: 1rem; display: block; }
+.input-invalid { border-color: var(--danger) !important; }
+.input-valid   { border-color: var(--success) !important; }
+.pwd-wrap { position: relative; }
+.pwd-wrap .form-control { padding-right: 2.8rem; background: #111927; }
+.eye-btn {
+  position: absolute; right: .65rem; top: 50%; transform: translateY(-50%);
+  width: 1.6rem; height: 1.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(240,165,0,.35);
+  background: rgba(240,165,0,.14);
+  color: var(--text);
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+<div class="page-wrap">
+  <div class="container page-body">
+    <div class="section-head"><h2>👤 My Profile</h2><p style="color:var(--muted)">View and update your account details</p></div>
+    <div style="max-width:600px">
+      <div id="profile-alert"></div>
+      <div class="card">
+
+        <div class="form-group">
+          <label>Customer ID</label>
+          <input class="form-control" id="f-id" readonly>
+        </div>
+
+        <div class="form-group">
+          <label>Full Name <span style="color:var(--danger)">*</span></label>
+          <input class="form-control" id="f-name" maxlength="50" placeholder="Alphabets only" oninput="liveValidateName()" disabled>
+          <span class="field-error" id="err-name"></span>
+        </div>
+
+        <div class="form-group">
+          <label>Email</label>
+          <input class="form-control" id="f-email" readonly>
+        </div>
+
+        <div class="form-group">
+          <label>Country</label>
+          <input class="form-control" id="f-country" disabled>
+        </div>
+
+        <div class="grid-2">
+        <div class="form-group">
+          <label>State</label>
+          <input class="form-control" id="f-state" disabled>
+        </div>
+
+        <div class="form-group">
+          <label>City <span style="color:var(--danger)">*</span></label>
+          <input class="form-control" id="f-city" oninput="liveValidateCity()" disabled>
+          <span class="field-error" id="err-city"></span>
+        </div>
+        </div>
+
+        <div class="form-group">
+          <label>Zip Code <span style="color:var(--danger)">*</span></label>
+          <input class="form-control" id="f-zip" maxlength="6" oninput="liveValidateZip()" disabled>
+          <span class="field-error" id="err-zip"></span>
+        </div>
+
+        <div class="form-group">
+          <label>Address Line 1 <span style="color:var(--danger)">*</span></label>
+          <textarea class="form-control" id="f-addr1" rows="2" oninput="liveRequired('f-addr1','err-addr1','Address Line 1')" disabled></textarea>
+          <span class="field-error" id="err-addr1"></span>
+        </div>
+
+        <div class="form-group">
+          <label>Address Line 2 <span style="color:var(--muted);font-size:.8rem">(Optional)</span></label>
+          <textarea class="form-control" id="f-addr2" rows="2" disabled></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Phone Number <span style="color:var(--danger)">*</span></label>
+          <input class="form-control" id="f-phone" placeholder="+91-9876543210" oninput="liveValidatePhone()" disabled>
+          <span class="field-error" id="err-phone"></span>
+        </div>
+
+        <!-- PASSWORD — must enter current password to make any changes -->
+        <div class="form-group">
+          <label>Current Password <span style="color:var(--muted);font-size:.78rem;font-weight:400">(required only when changing password)</span></label>
+          <div class="pwd-wrap">
+            <input class="form-control" id="f-cur-pwd" type="password" placeholder="Enter your current password" oninput="clearErr('err-cur-pwd')" disabled>
+            <button type="button" class="eye-btn" id="eye-cur" onclick="togglePwd('f-cur-pwd','eye-cur')">👁</button>
+          </div>
+          <span class="field-error" id="err-cur-pwd"></span>
+        </div>
+
+        <div class="form-group">
+          <label>New Password <span style="color:var(--muted);font-size:.78rem;font-weight:400">(leave blank to keep current)</span></label>
+          <div class="pwd-wrap">
+            <input class="form-control" id="f-pwd" type="password" placeholder="Min 10 characters" oninput="liveValidateNewPwd()" disabled>
+            <button type="button" class="eye-btn" id="eye-new" onclick="togglePwd('f-pwd','eye-new')">👁</button>
+          </div>
+          <span class="field-error" id="err-pwd"></span>
+        </div>
+
+        <div class="form-group">
+          <label>Confirm New Password</label>
+          <div class="pwd-wrap">
+            <input class="form-control" id="f-pwd2" type="password" placeholder="Repeat new password" oninput="liveValidateConfirmPwd()" disabled>
+            <button type="button" class="eye-btn" id="eye-confirm" onclick="togglePwd('f-pwd2','eye-confirm')">👁</button>
+          </div>
+          <span class="field-error" id="err-pwd2"></span>
+        </div>
+
+        <div class="flex gap-1 mt-2">
+          <button class="btn btn-primary" id="edit-btn" onclick="setEditMode(true)">Edit Details</button>
+          <button class="btn btn-success hidden" id="save-btn" onclick="saveProfile()">Save Changes</button>
+          <button class="btn btn-outline hidden" id="cancel-btn" onclick="cancelEdit()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Security Question Card -->
+      <div class="card mt-2">
+        <div class="flex justify-between" style="align-items:flex-start">
+          <div>
+            <h3 style="font-size:1rem;margin-bottom:.25rem">🔐 Security Question</h3>
+            <p id="sq-status" class="text-muted" style="font-size:.85rem"></p>
+          </div>
+          <a href="security-question.html" class="btn btn-outline btn-sm" style="white-space:nowrap">Set up / Change</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<footer id="main-footer"></footer>
+<div id="toast-container"></div>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+const sess = requireCustomerAuth();
+if (!sess) throw new Error();
+renderCustomerNav('');
+
+/* ── Live validators ─────────────────────────────── */
+function clearErr(id) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = ''; }
+}
+function setErr(id, msg) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = msg;
+}
+function markInvalid(inputId, errId, msg) {
+  document.getElementById(inputId)?.classList.add('input-invalid');
+  document.getElementById(inputId)?.classList.remove('input-valid');
+  setErr(errId, msg);
+  return false;
+}
+function markValid(inputId, errId) {
+  document.getElementById(inputId)?.classList.remove('input-invalid');
+  document.getElementById(inputId)?.classList.add('input-valid');
+  clearErr(errId);
+  return true;
+}
+
+function liveValidateName() {
+  const val = document.getElementById('f-name').value.trim();
+  // Block digits as they are typed
+  const cleaned = val.replace(/[^a-zA-Z\s]/g, '');
+  if (cleaned !== val) {
+    document.getElementById('f-name').value = cleaned;
+    return markInvalid('f-name','err-name','❌ Name must contain alphabets only — no numbers or special characters.');
+  }
+  if (!cleaned) return markInvalid('f-name','err-name','❌ Full name is required.');
+  return markValid('f-name','err-name');
+}
+
+function liveValidateCity() {
+  const el = document.getElementById('f-city');
+  el.value = el.value.replace(/[^a-zA-Z\s]/g, '');
+  const val = el.value.trim();
+  if (!val) return markInvalid('f-city','err-city','❌ City is required.');
+  return markValid('f-city','err-city');
+}
+
+function liveValidateZip() {
+  const el = document.getElementById('f-zip');
+  el.value = el.value.replace(/\D/g, '').slice(0, 6);
+  if (!el.value) return markInvalid('f-zip','err-zip','❌ Zip Code is required.');
+  if (!/^\d{6}$/.test(el.value)) return markInvalid('f-zip','err-zip','❌ Zip Code must be 6 digits.');
+  return markValid('f-zip','err-zip');
+}
+
+function liveRequired(inputId, errId, label) {
+  const val = document.getElementById(inputId).value.trim();
+  if (!val) return markInvalid(inputId, errId, `❌ ${label} is required.`);
+  return markValid(inputId, errId);
+}
+
+function liveValidatePhone() {
+  const phoneEl = document.getElementById('f-phone');
+  phoneEl.value = phoneEl.value.replace(/[^0-9+\-]/g, '');
+  const val = phoneEl.value.trim();
+  if (!val) return markInvalid('f-phone','err-phone','❌ Phone number is required.');
+  if (!/^\+\d{1,3}-\d{10}$/.test(val))
+    return markInvalid('f-phone','err-phone','❌ Format must be +91-9876543210');
+  return markValid('f-phone','err-phone');
+}
+
+function liveValidateNewPwd() {
+  const val = document.getElementById('f-pwd').value;
+  if (!val) { clearErr('err-pwd'); document.getElementById('f-pwd').classList.remove('input-invalid','input-valid'); return; }
+  if (val.length < 10) return markInvalid('f-pwd','err-pwd','❌ New password must be at least 10 characters.');
+  markValid('f-pwd','err-pwd');
+  liveValidateConfirmPwd();
+}
+
+function liveValidateConfirmPwd() {
+  const p1 = document.getElementById('f-pwd').value;
+  const p2 = document.getElementById('f-pwd2').value;
+  if (!p2) { clearErr('err-pwd2'); document.getElementById('f-pwd2').classList.remove('input-invalid','input-valid'); return; }
+  if (p1 !== p2) return markInvalid('f-pwd2','err-pwd2','❌ Passwords do not match.');
+  return markValid('f-pwd2','err-pwd2');
+}
+
+/* ── Load profile ─────────────────────────────────── */
+function loadProfile() {
+  const c = Store.getCustomerById(sess.customerId);
+  document.getElementById('f-id').value    = c.customerId;
+  document.getElementById('f-name').value  = c.name;
+  document.getElementById('f-email').value = c.email;
+  document.getElementById('f-country').value = c.country || '';
+  document.getElementById('f-state').value = c.state || '';
+  document.getElementById('f-city').value = c.city || '';
+  document.getElementById('f-zip').value = c.zipCode || '';
+  document.getElementById('f-addr1').value = c.address1;
+  document.getElementById('f-addr2').value = c.address2 || '';
+  document.getElementById('f-phone').value = c.phoneNumber;
+  document.getElementById('f-cur-pwd').value = '';
+  document.getElementById('f-pwd').value   = '';
+  document.getElementById('f-pwd2').value  = '';
+  // clear all errors & validity classes
+  ['f-name','f-city','f-zip','f-addr1','f-addr2','f-phone','f-cur-pwd','f-pwd','f-pwd2'].forEach(id => {
+    document.getElementById(id)?.classList.remove('input-invalid','input-valid');
+  });
+  ['err-name','err-city','err-zip','err-addr1','err-phone','err-cur-pwd','err-pwd','err-pwd2'].forEach(id => clearErr(id));
+  document.getElementById('profile-alert').innerHTML = '';
+
+  const sqStatus = document.getElementById('sq-status');
+  if (c.securityQuestion) {
+    sqStatus.innerHTML = `<span style="color:var(--success)">✅ Set —</span> "${c.securityQuestion}"`;
+  } else {
+    sqStatus.innerHTML = `<span style="color:var(--danger)">⚠️ Not set</span> — Required for password recovery`;
+  }
+
+  setEditMode(false);
+}
+
+function setEditMode(enable) {
+  ['f-name','f-city','f-zip','f-addr1','f-addr2','f-phone','f-cur-pwd','f-pwd','f-pwd2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !enable;
+  });
+
+  document.getElementById('edit-btn').classList.toggle('hidden', enable);
+  document.getElementById('save-btn').classList.toggle('hidden', !enable);
+  document.getElementById('cancel-btn').classList.toggle('hidden', !enable);
+}
+
+function cancelEdit() {
+  loadProfile();
+  toast('Changes discarded.', 'info');
+}
+
+function togglePwd(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (!input || input.disabled) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+  btn.textContent = input.type === 'password' ? '👁' : '🙈';
+}
+
+/* ── Save profile ─────────────────────────────────── */
+function saveProfile() {
+  const alertEl = document.getElementById('profile-alert');
+  alertEl.innerHTML = '';
+  let valid = true;
+
+  const name   = document.getElementById('f-name').value.trim();
+  const city   = document.getElementById('f-city').value.trim();
+  const zip    = document.getElementById('f-zip').value.trim();
+  const addr1  = document.getElementById('f-addr1').value.trim();
+  const addr2  = document.getElementById('f-addr2').value.trim();
+  const phone  = document.getElementById('f-phone').value.trim();
+  const curPwd = document.getElementById('f-cur-pwd').value;
+  const newPwd = document.getElementById('f-pwd').value;
+  const newPwd2= document.getElementById('f-pwd2').value;
+
+  // ── Validate name ──────────────────────────────────
+  if (!name) { markInvalid('f-name','err-name','❌ Full name is required.'); valid = false; }
+  else if (!/^[a-zA-Z\s]+$/.test(name)) { markInvalid('f-name','err-name','❌ Name must contain alphabets only.'); valid = false; }
+  else markValid('f-name','err-name');
+
+  if (!city) { markInvalid('f-city','err-city','❌ City is required.'); valid = false; }
+  else if (!/^[a-zA-Z\s]+$/.test(city)) { markInvalid('f-city','err-city','❌ City must contain alphabets only.'); valid = false; }
+  else markValid('f-city','err-city');
+
+  if (!zip) { markInvalid('f-zip','err-zip','❌ Zip Code is required.'); valid = false; }
+  else if (!/^\d{6}$/.test(zip)) { markInvalid('f-zip','err-zip','❌ Zip Code must be 6 digits.'); valid = false; }
+  else markValid('f-zip','err-zip');
+
+  // ── Validate address ───────────────────────────────
+  if (!addr1) { markInvalid('f-addr1','err-addr1','❌ Address Line 1 is required.'); valid = false; }
+  else markValid('f-addr1','err-addr1');
+
+  // ── Validate phone ─────────────────────────────────
+  if (!phone) { markInvalid('f-phone','err-phone','❌ Phone number is required.'); valid = false; }
+  else if (!/^\+\d{1,3}-\d{10}$/.test(phone)) { markInvalid('f-phone','err-phone','❌ Format: +91-9876543210'); valid = false; }
+  else markValid('f-phone','err-phone');
+
+  // ── CURRENT PASSWORD — required only for password change ──
+  if (newPwd || newPwd2) {
+    if (!curPwd) {
+      markInvalid('f-cur-pwd','err-cur-pwd','❌ Current password is required to change password.');
+      valid = false;
+    } else {
+      const c = Store.getCustomerById(sess.customerId);
+      if (atob(c.password) !== curPwd) {
+        markInvalid('f-cur-pwd','err-cur-pwd','❌ Current password is incorrect.');
+        valid = false;
+      } else markValid('f-cur-pwd','err-cur-pwd');
+    }
+  } else {
+    clearErr('err-cur-pwd');
+    document.getElementById('f-cur-pwd').classList.remove('input-invalid','input-valid');
+  }
+
+  if (newPwd && !/^(?=(?:.*[a-z]){2,})(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/.test(newPwd)) {
+    markInvalid('f-pwd','err-pwd','❌ Password must be 10+ chars with upper, lower, number and special character.');
+    valid = false;
+  } else if (newPwd) {
+    markValid('f-pwd','err-pwd');
+  }
+
+  // ── New password (optional but if filled, validate) ─
+  if (newPwd || newPwd2) {
+    if (!newPwd) {
+      markInvalid('f-pwd','err-pwd','❌ New password is required.');
+      valid = false;
+    }
+    if (newPwd !== newPwd2) { markInvalid('f-pwd2','err-pwd2','❌ Passwords do not match.'); valid = false; }
+    else markValid('f-pwd2','err-pwd2');
+  }
+
+  if (!valid) return;
+
+  const updates = {
+    name,
+    city,
+    zipCode: zip,
+    address1: addr1,
+    address2: addr2,
+    phoneNumber: phone,
+  };
+  if (newPwd) updates.password = btoa(newPwd);
+  Store.updateCustomer(sess.customerId, updates);
+  Store.setSession({ ...Store.getSession(), name });
+
+  alertEl.innerHTML = '<div class="alert alert-success">✅ Profile updated successfully!</div>';
+  renderCustomerNav('');
+  toast('Profile saved!', 'success');
+  loadProfile();
+}
+
+loadProfile();
+renderSiteFooter();
+</script>
+</body>
+</html>

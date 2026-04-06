@@ -1,0 +1,377 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Register — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card" style="max-width:600px">
+    <h1>Create Account</h1>
+    <p class="subtitle">Join ShopXpress and start shopping today</p>
+
+    <div id="reg-error" class="alert alert-danger hidden"></div>
+    <div id="reg-success" class="alert alert-success hidden"></div>
+
+    <form id="reg-form" novalidate>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input class="form-control" id="name" maxlength="50" placeholder="Your full name" required>
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input class="form-control" id="email" type="email" placeholder="you@email.com" required>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Country *</label>
+          <select class="form-control" id="country" required>
+            <option value="">Select Country</option>
+            <option>India</option><option>USA</option><option>UK</option><option>Australia</option>
+            <option>Canada</option><option>Germany</option><option>France</option><option>Japan</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>State *</label>
+          <select class="form-control" id="state" required>
+            <option value="">Select State</option>
+            <option>Madhya Pradesh</option><option>Maharashtra</option><option>Delhi</option>
+            <option>Karnataka</option><option>Tamil Nadu</option><option>Rajasthan</option>
+            <option>Gujarat</option><option>Uttar Pradesh</option><option>West Bengal</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>City *</label>
+          <input class="form-control" id="city" placeholder="Your city" required>
+        </div>
+        <div class="form-group">
+          <label>Zip Code *</label>
+          <select class="form-control" id="zipCode" required>
+            <option value="">Select Zip</option>
+            <option>452001</option><option>452002</option><option>400001</option>
+            <option>110001</option><option>560001</option><option>600001</option>
+            <option>380001</option><option>302001</option><option>700001</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Address Line 1 *</label>
+        <textarea class="form-control" id="address1" rows="2" placeholder="House/Flat no., Street name" required></textarea>
+      </div>
+      <div class="form-group">
+        <label>Address Line 2</label>
+        <textarea class="form-control" id="address2" rows="2" placeholder="Landmark, locality (optional)"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Phone Number * (with country code)</label>
+        <input class="form-control" id="phone" placeholder="+91-9876543210" required>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Password * (min 10 chars)</label>
+          <input class="form-control" id="password" type="password" placeholder="Min 10 characters" required>
+        </div>
+        <div class="form-group">
+          <label>Confirm Password *</label>
+          <input class="form-control" id="confirmPwd" type="password" placeholder="Repeat password" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full btn-lg mt-2">Create Account →</button>
+    </form>
+    <p class="center mt-2 text-muted">Already have an account? <a href="index.html">Sign In</a></p>
+  </div>
+</div>
+
+<footer id="main-footer"></footer>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('reg-error');
+  const sucEl = document.getElementById('reg-success');
+  errEl.classList.add('hidden'); sucEl.classList.add('hidden');
+
+  const name      = document.getElementById('name').value.trim();
+  const email     = document.getElementById('email').value.trim();
+  const country   = document.getElementById('country').value;
+  const state     = document.getElementById('state').value;
+  const city      = document.getElementById('city').value.trim();
+  const address1  = document.getElementById('address1').value.trim();
+  const address2  = document.getElementById('address2').value.trim();
+  const zipCode   = document.getElementById('zipCode').value;
+  const phone     = document.getElementById('phone').value.trim();
+  const password  = document.getElementById('password').value;
+  const confirmPwd= document.getElementById('confirmPwd').value;
+
+  // Validations
+  if (!name || !email || !country || !state || !city || !address1 || !zipCode || !phone || !password || !confirmPwd) {
+    return showErr('Please fill in all required fields.');
+  }
+  if (name.length > 50) return showErr('Name must be max 50 characters.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr('Enter a valid email address.');
+  if (Store.getCustomerByEmail(email)) return showErr('This email is already registered. Please use a different email.');
+  if (password.length < 10) return showErr('Password must be at least 10 characters.');
+  if (!/^[a-zA-Z0-9]+$/.test(password) && !/^[a-zA-Z]+$/.test(password)) {
+    // ok - alphabetic or alphanumeric
+  }
+  if (password !== confirmPwd) return showErr('Passwords do not match.');
+
+  const customer = Store.addCustomer({ name, email, country, state, city, address1, address2, zipCode, phoneNumber: phone, password: btoa(password) });
+
+  sucEl.innerHTML = `✅ Account created! Your Customer ID is <strong>${customer.customerId}</strong>. <a href="index.html">Login now →</a>`;
+  sucEl.classList.remove('hidden');
+  this.reset();
+
+  function showErr(msg) { errEl.textContent = '⚠️ ' + msg; errEl.classList.remove('hidden'); }
+});
+
+function showErr(msg) {
+  const errEl = document.getElementById('reg-error');
+  errEl.textContent = '⚠️ ' + msg; errEl.classList.remove('hidden');
+}
+
+renderSiteFooter();
+</script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register — ShopXpress</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+<div class="auth-page">
+  <div class="auth-card" style="max-width:600px">
+    <h1>Create Account</h1>
+    <p class="subtitle">Join ShopXpress and start shopping today</p>
+
+<div id="reg-error" class="alert alert-danger hidden"></div>
+<div id="reg-success" class="alert alert-success hidden"></div>
+
+<form id="reg-form" novalidate>
+
+  <div class="grid-2">
+    <div class="form-group">
+      <label>Full Name *</label>
+      <input class="form-control" id="name" maxlength="50" placeholder="Your full name" required>
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input class="form-control" id="email" type="email" placeholder="you@email.com" required>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="form-group">
+      <label>Country *</label>
+      <select class="form-control" id="country" required>
+        <option>India</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>State *</label>
+      <select class="form-control" id="state" required>
+        <option value="">Select State</option>
+        <option>Madhya Pradesh</option><option>Maharashtra</option><option>Delhi</option>
+        <option>Karnataka</option><option>Tamil Nadu</option><option>Rajasthan</option>
+        <option>Gujarat</option><option>Uttar Pradesh</option><option>West Bengal</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="form-group">
+      <label>City *</label>
+      <input class="form-control" id="city" placeholder="Your city" required>
+    </div>
+    <div class="form-group">
+      <label>Zip Code *</label>
+      <input class="form-control" id="zipCode" type="text" placeholder="6 digit zipCode" required>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Address Line 1 *</label>
+    <textarea class="form-control" id="address1" rows="2" required></textarea>
+  </div>
+
+  <div class="form-group">
+    <label>Address Line 2</label>
+    <textarea class="form-control" id="address2" rows="2"></textarea>
+  </div>
+
+  <div class="form-group">
+    <label>Phone Number * (with country code)</label>
+    <input class="form-control" id="phone" placeholder="+91-9876543210" required>
+  </div>
+
+  <div class="grid-2">
+    <div class="form-group">
+      <label>Password * (min 10 chars)</label>
+      <input class="form-control" id="password" type="password" required>
+    </div>
+    <div class="form-group">
+      <label>Confirm Password *</label>
+      <input class="form-control" id="confirmPwd" type="password" required>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-full btn-lg mt-2">
+    Create Account →
+  </button>
+
+</form>
+
+<p class="center mt-2 text-muted">
+  Already have an account? <a href="index.html">Sign In</a>
+</p>
+
+  </div>
+</div>
+<footer id="main-footer"></footer>
+
+<script src="js/store.js"></script>
+
+<script src="js/app.js"></script>
+
+<script>
+//  Restrict Name (only letters + space)
+document.getElementById("name").addEventListener("input", (e) => {
+  e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+});
+
+//  Restrict Zip Code (6 digits only)
+document.getElementById("zipCode").addEventListener("input", (e) => {
+  e.target.value = e.target.value.replace(/\D/g, "");
+  if (e.target.value.length > 6) {
+    e.target.value = e.target.value.slice(0, 6);
+  }
+});
+
+//  Restrict Phone Input
+document.getElementById("phone").addEventListener("input", (e) => {
+  e.target.value = e.target.value.replace(/[^0-9+\-]/g, "");
+});
+
+
+//  FORM SUBMIT 
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const country = document.getElementById('country').value;
+  const state = document.getElementById('state').value;
+  const city = document.getElementById('city').value.trim();
+  const address1 = document.getElementById('address1').value.trim();
+  const address2 = document.getElementById('address2').value.trim();
+  const zipCode = document.getElementById('zipCode').value;
+  const phone = document.getElementById('phone').value.trim();
+  const password = document.getElementById('password').value;
+  const confirmPwd = document.getElementById('confirmPwd').value;
+
+  //  Required fields
+  if (!name || !email || !country || !state || !city || !address1 || !zipCode || !phone || !password || !confirmPwd) {
+    return showErr('Please fill in all required fields.');
+  }
+
+  //  Name validation
+  if (!/^[A-Za-z\s]+$/.test(name)) {
+    return showErr("Name should contain only letters.");
+  }
+
+  //  Email validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return showErr('Enter a valid email address.');
+  }
+
+  if (Store.getCustomerByEmail(email)) {
+    return showErr('Email already registered.');
+  }
+
+  //  Password validation
+  if (!/^(?=(?:.*[a-z]){2,})(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/.test(password)) {
+    return showErr("Password must be 10+ chars with upper, lower, number & special char.");
+  }
+
+  if (password !== confirmPwd) {
+    return showErr('Passwords do not match.');
+  }
+
+  //  Phone validation
+  if (!/^\+\d{1,3}-\d{10}$/.test(phone)) {
+    return showErr("Invalid phone number. Use +91-9876543210");
+  }
+
+  //  Zip validation
+  if (!/^\d{6}$/.test(zipCode)) {
+    return showErr("Zip Code must be 6 digits.");
+  }
+
+  // Save user
+  const customer = Store.addCustomer({
+    name, email, country, state, city, address1, address2,
+    zipCode, phoneNumber: phone, password: btoa(password)
+  });
+
+  this.reset();
+
+  showLoginPopup(`✅ Account created! Your Customer ID is <strong>${customer.customerId}</strong>`);
+});
+
+
+//  POPUP 
+function showLoginPopup(message) {
+  const overlay = document.createElement("div");
+  overlay.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;justify-content:center;align-items:center;z-index:9999";
+
+  const popup = document.createElement("div");
+  popup.style = "background:#111;color:#fff;padding:25px;border-radius:10px;text-align:center;";
+
+  const text = document.createElement("p");
+  text.innerHTML = message;
+
+  const button = document.createElement("button");
+  button.innerText = "Login";
+  button.onclick = () => window.location.href = "index.html";
+
+  popup.appendChild(text);
+  popup.appendChild(button);
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+}
+
+
+//  ERROR 
+function showErr(message) {
+  const existing = document.getElementById("error-banner");
+  if (existing) existing.remove();
+
+  const banner = document.createElement("div");
+  banner.id = "error-banner";
+  banner.innerText = message;
+  banner.style = "position:fixed;top:10px;left:50%;transform:translateX(-50%);background:black;color:red;padding:10px;border-radius:5px;z-index:10000";
+
+  document.body.appendChild(banner);
+
+  setTimeout(() => banner.remove(), 3000);
+}
+
+renderSiteFooter();
+</script>
+
+</body>
+</html>
