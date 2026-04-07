@@ -397,14 +397,53 @@ function validateAndConfirm() {
   }
 
   const labels = { cc:'Credit Card', dc:'Debit Card', nb:'Net Banking', upi:'UPI' };
+
+  const allowedCards = [
+      "4111111111111111",
+      "5200000000000007"
+  ];
+  const allowedBanks = [
+      "HDFC",
+      "SBI",
+      "ICICI"
+  ];
+
   let detail = '';
   if (currentTab === 'cc' || currentTab === 'dc') {
-    const num = document.getElementById(currentTab+'-num').value;
+    const num = document.getElementById(currentTab+'-num').value.trim();
+    if(!allowedCards.includes(num)){
+      errEl.textContent = "Invalid card number";
+      errEl.classList.remove('hidden');
+      return;
+
+    }
     detail = `${labels[currentTab]} — ending ••••${num.slice(-4)}`;
   } else if (currentTab === 'nb') {
-    detail = `Net Banking — ${document.getElementById('nb-bank').value}`;
+    const bank = document.getElementById('nb-bank').value;
+    if(!allowedBanks.includes(bank)){
+      errEl.textContent = "Invalid Bank";
+      errEl.classList.remove('hidden');
+      return;
+    }
+    
+    detail = `Net Banking — ${blank}`;
   } else {
-    detail = `UPI — ${document.getElementById('upi-id').value.trim()}`;
+    const allowedUPIs = [
+        "tharun@ybl",
+        "yash@sbi",
+        "radha@hdfc",
+        "pooja@okicici"
+    ];
+
+    const upi = document.getElementById('upi-id').value.trim().toLowerCase();
+
+    if(!allowedUPIs.includes(upi)){
+      errEl.textContent = "Invalid UPI ID.";
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    detail = `UPI — ${upi}`;
   }
   showConfirmPopup(detail);
 }
